@@ -25,8 +25,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm build
       - run: pnpm --filter @posha/ui check:contrast
       - run: pnpm seed:validate
+      - run: pnpm --filter @posha/api openapi:export
+      - run: git diff --exit-code docs/openapi.json
       - run: pnpm format:check
 
   spec-coverage:

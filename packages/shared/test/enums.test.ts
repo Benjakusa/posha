@@ -94,10 +94,17 @@ describe('shared API and data contracts', () => {
       'appealed',
     ]);
     expect(ErrorCodeSchema.options).toEqual([
+      'VALIDATION_ERROR',
+      'UNAUTHORIZED',
+      'FORBIDDEN',
+      'NOT_FOUND',
+      'CONFLICT',
       'AGE_LEVEL_REQUIRED',
       'RATE_LIMITED',
       'GATE_DISABLED',
       'SESSION_NOT_FOUND',
+      'HTTP_ERROR',
+      'INTERNAL_SERVER_ERROR',
     ]);
   });
 

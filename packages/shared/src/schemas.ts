@@ -37,10 +37,17 @@ export const PayoutStatusSchema = z.enum(PayoutStatuses);
 export const ReportStatusSchema = z.enum(ReportStatuses);
 
 export const ErrorCodeSchema = z.enum([
+  ErrorCodes.VALIDATION_ERROR,
+  ErrorCodes.UNAUTHORIZED,
+  ErrorCodes.FORBIDDEN,
+  ErrorCodes.NOT_FOUND,
+  ErrorCodes.CONFLICT,
   ErrorCodes.AGE_LEVEL_REQUIRED,
   ErrorCodes.RATE_LIMITED,
   ErrorCodes.GATE_DISABLED,
   ErrorCodes.SESSION_NOT_FOUND,
+  ErrorCodes.HTTP_ERROR,
+  ErrorCodes.INTERNAL_SERVER_ERROR,
 ]);
 
 export const ProblemDetailsSchema = z

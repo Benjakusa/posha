@@ -4,9 +4,10 @@
   "private": true,
   "packageManager": "pnpm@10.18.3",
   "engines": {
-    "node": ">=20 <23"
+    "node": ">=20.19 <23"
   },
   "scripts": {
+    "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

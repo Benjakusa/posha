@@ -6,6 +6,35 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test"
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --import ./dist/instrumentation.js ./dist/main.js",
+    "start:dev": "node --import tsx --import ./src/instrumentation.ts --watch ./src/main.ts",
+    "openapi:export": "tsx src/openapi-export.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.2.7",
+    "@nestjs/core": "^11.2.7",
+    "@nestjs/platform-express": "^11.2.7",
+    "@nestjs/swagger": "^11.4.7",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.81.2",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
+    "@opentelemetry/resources": "^2.12.0",
+    "@opentelemetry/sdk-node": "^0.223.0",
+    "@posha/shared": "workspace:*",
+    "nestjs-pino": "^5.3.1",
+    "pino": "^10.4.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.2.7",
+    "@types/supertest": "^7.2.1",
+    "prettier": "^3.9.10",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "vitest": "^3.2.7"
   }
 }
