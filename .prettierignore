@@ -1,0 +1,7 @@
+node_modules
+pnpm-lock.yaml
+coverage
+dist
+docs/spec/**
+files (2)/**
+PROGRESS.md
