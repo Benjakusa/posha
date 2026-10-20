@@ -6,6 +6,19 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test"
+    "test": "vitest run"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./enums": "./src/enums.ts",
+    "./errors": "./src/errors.ts",
+    "./schemas": "./src/schemas.ts",
+    "./money": "./src/money.ts"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
   }
 }
