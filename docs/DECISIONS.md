@@ -31,3 +31,7 @@ Use `node-pg-migrate` with reversible SQL migrations. The first migration create
 ## 2026-10-20 — UUIDv7 generation
 
 The application supplies UUIDv7 primary keys rather than relying on a database default. The local PostgreSQL target is version 16, so the schema does not assume a native UUIDv7 generator. Migration backfills use timestamp-based UUIDv7 values for existing compliance gate rows.
+
+## 2026-10-20 — Authentication delivery and route ordering
+
+OTP delivery uses an injected `OtpDeliveryProvider`; no SMS/email vendor is selected in the spec, so provider credentials and transport remain external. Auth routes are deferred until P1-03 provides the required policy guards. Refresh-token families have a 30-day absolute lifetime; access tokens keep the specified 15-minute lifetime.

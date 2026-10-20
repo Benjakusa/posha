@@ -5,6 +5,10 @@ const migrationPath = new URL(
   '../../../infra/db/migrations/002_identity_and_core.sql',
   import.meta.url,
 );
+const authMigrationPath = new URL(
+  '../../../infra/db/migrations/003_auth_security.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -34,5 +38,21 @@ describe('identity and core database migration', () => {
     expect(up).toContain("'GATE:RANDOM_VIDEO', false");
     expect(up).toContain("DEFAULT 'L0'");
     expect(up).not.toMatch(/(raw_id|id_image|document_image)/i);
+  });
+
+  it('[P1-02] persists OTP limits, refresh families, and encrypted TOTP state', async () => {
+    const migration = await readFile(authMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+
+    expect(up).toContain('CREATE TABLE auth_challenges');
+    expect(up).toContain('identity_hash bytea');
+    expect(up).toContain('otp_hash bytea');
+    expect(up).toContain('attempt_count BETWEEN 0 AND 5');
+    expect(up).toContain('ALTER TABLE sessions_auth ADD COLUMN family_id uuid');
+    expect(up).toContain('ALTER TABLE users ADD COLUMN totp_secret_encrypted bytea');
+    expect(up).not.toMatch(/(identity text|otp_code text|totp_secret text)/i);
+    expect(down).toContain('DROP TABLE auth_challenges');
+    expect(down).toContain('DROP COLUMN family_id');
+    expect(down).toContain('DROP COLUMN totp_secret_encrypted');
   });
 });
