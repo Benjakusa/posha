@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 0
-Current task: P0-04
-Next task: P0-06
+Current task: P0-06
+Next task: P0-07
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -22,6 +22,7 @@ Next task: P0-06
 | P0-05 | Done | 2026-10-20 | `053e49d` | CI workflow; `scripts/check-spec-coverage.mjs` finds 82 acceptance IDs | CI quality pipeline and spec-coverage scaffold added with P0-01 per phase order; feature-to-test mapping is not enforced until feature suites exist. |
 | P0-02 | Done | 2026-10-20 | `eae7d7e` | `pnpm lint`, `pnpm typecheck`, `pnpm test` (4 tests), `pnpm --filter @posha/ui check:contrast` (15 pairs), and `pnpm format:check` pass | Added canonical Ember tokens, Tailwind preset, token snapshot, and CI contrast validation. |
 | P0-03 | Done | 2026-10-20 | `0fc1132` | `pnpm lint`, `pnpm typecheck`, `pnpm test` (8 shared tests), contrast, spec-coverage, and formatting pass | Added exact data-model enums, listed API error codes, RFC 7807 and Connect schemas, safe integer money DTOs, and KES formatting. Excess currency precision is rejected per `docs/DECISIONS.md`. |
+| P0-04 | Done | 2026-10-20 | `5fbbc9f` | `pnpm seed:validate`, Compose YAML parse, `pnpm lint`, `pnpm typecheck`, `pnpm test` (12 tests), contrast, spec-coverage, and formatting pass | Added local Postgres, Redis, MinIO, Mailpit and opt-in LiveKit, private buckets, and neutral fixtures. Docker is not installed here, so container startup was not exercised. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
