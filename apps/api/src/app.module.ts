@@ -3,10 +3,11 @@ import { LoggerModule } from 'nestjs-pino';
 import { API_CONFIG, validateApiConfig } from './api-config.js';
 import { HealthController } from './health/health.controller.js';
 import { HealthProbeGuard } from './health/health-probe.guard.js';
+import { FeatureFlagsModule } from './flags/feature-flags.service.js';
 import { createPinoHttpOptions } from './logging.js';
 
 @Module({
-  imports: [LoggerModule.forRoot({ pinoHttp: createPinoHttpOptions() })],
+  imports: [LoggerModule.forRoot({ pinoHttp: createPinoHttpOptions() }), FeatureFlagsModule],
   controllers: [HealthController],
   providers: [
     HealthProbeGuard,

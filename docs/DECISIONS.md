@@ -23,3 +23,7 @@ The local Compose stack uses MinIO's Quay-hosted community image because its Doc
 ## 2026-10-20 — Generic HTTP problem codes
 
 The API contract lists four domain error codes but also requires stable problem codes for generic HTTP failures. The shared package keeps all four listed codes unchanged and adds generic validation, authorization, not-found, conflict, HTTP, and server-error codes for the exception filter.
+
+## 2026-10-20 — PostgreSQL migration runner
+
+Use `node-pg-migrate` with reversible SQL migrations. The first migration creates and seeds the compliance gate registry as blocked; the identity and feature-flag schema remains in P1-01. Migration execution requires `DATABASE_URL` and is exposed through the API workspace scripts.

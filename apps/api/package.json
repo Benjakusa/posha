@@ -10,7 +10,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node --import ./dist/instrumentation.js ./dist/main.js",
     "start:dev": "node --import tsx --import ./src/instrumentation.ts --watch ./src/main.ts",
-    "openapi:export": "tsx src/openapi-export.ts"
+    "openapi:export": "tsx src/openapi-export.ts",
+    "db:migrate": "node-pg-migrate up --migrations-dir ../../infra/db/migrations --database-url-var DATABASE_URL --envPath ../../.env",
+    "db:rollback": "node-pg-migrate down --migrations-dir ../../infra/db/migrations --database-url-var DATABASE_URL --envPath ../../.env"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.7",
@@ -32,6 +34,8 @@
   "devDependencies": {
     "@nestjs/testing": "^11.2.7",
     "@types/supertest": "^7.2.1",
+    "node-pg-migrate": "^9.0.0",
+    "pg": "^8.23.1",
     "prettier": "^3.9.10",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
