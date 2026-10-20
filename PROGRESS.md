@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 1
-Current task: P1-05
-Next task: P1-06
+Current task: P1-06
+Next task: P1-07
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -30,6 +30,7 @@ Next task: P1-06
 | P1-03 | Done | 2026-10-20 | `9718d34` | `authorization.test.ts` (17 tests), API tests (4), full lint, typecheck, test (39 passed; 3 DB tests skipped without `TEST_DATABASE_URL`), build, and format check pass | Added ordered policy guard classes, deny-by-default authorization evaluator, Redis-backed fixed-window limits with HMAC keys and fail-closed behavior, and policy error codes. |
 | P1-04 | Done | 2026-10-20 | `08bcd29` | Age unit tests (8), PostgreSQL integration tests (5), full lint/typecheck/test/build/format; all 53 tests passed with an isolated PostgreSQL database; migrations 001–004 applied and P1-04 migration rolled back | Added age provider interface and local fake, protected start/status routes, signed idempotent webhook handling, latest-check-only L2 grants, expiry re-gating, reversible migration, and provider-held evidence references. `GATE:AGE_PROVIDER_LIVE` remains OFF. |
 | FIX-001 | Done | 2026-10-20 | `729ae7f` | Migration contract test; all API tests pass; migrations 001–005 applied and migration 005 rolled back in an isolated PostgreSQL database | Repaired the missing `data_requests` table required by the data model and P1-05. |
+| P1-05 | Done | 2026-10-20 | `6b86161` | Profile schema tests (3), API profile/privacy tests (6), full lint/typecheck/test/build/format; all 64 tests passed with isolated PostgreSQL; migrations 001–006 applied and migration 006 rolled back | Added self-service profiles/preferences, unique handle cooldown, symmetric blocks, JSON export, soft deletion/session revocation, queued 30-day PII purge, and reversible migration. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
