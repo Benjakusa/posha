@@ -7,6 +7,7 @@ Base: `/api/v1`. JSON. Auth: `Authorization: Bearer <access JWT>` (15 min) + ref
 ## 1. Auth & account
 `POST /auth/register` `POST /auth/otp/request` `POST /auth/otp/verify` `POST /auth/refresh` `POST /auth/logout` `POST /auth/2fa/enroll|verify`
 `GET /me` `PATCH /me` `PATCH /me/preferences` `POST /me/data-export` `DELETE /me` (starts deletion workflow)
+`GET /me/notification-preferences` `PATCH /me/notification-preferences` (owner only; safety/legal notices cannot be opted out of)
 
 ## 2. Age & KYC
 `POST /age/start` → provider session URL · `POST /age/webhook` (provider) · `GET /age/status`

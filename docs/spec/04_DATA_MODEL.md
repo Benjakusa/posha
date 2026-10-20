@@ -39,7 +39,7 @@ PostgreSQL 15+, migrations via a versioned tool (Prisma Migrate, Drizzle or Knex
 **audit_log**: actor_id, actor_role, action, entity_type, entity_id, reason (required for sensitive), ip_hash, prev_hash, hash, created_at (append-only, hash-chained).
 **feature_flags**: key, enabled, rollout jsonb, gate_note, changed_by. **compliance_gates**: key, status (blocked, approved), approved_by, evidence_ref, approved_at.
 **outbox_events**: aggregate, type, payload, published_at (transactional outbox).
-**notification_prefs**, **notifications**, **data_requests** (export/delete workflow).
+**notification_prefs**: user_id, category, channel, enabled, updated_at (unique user/category/channel). **notifications**: id, user_id, category, template_key, channel, status, provider_ref, error_code, created_at, sent_at. Store no message body or destination. **data_requests** (export/delete workflow).
 
 ## 3. State machines (implement as pure functions + exhaustive tests)
 

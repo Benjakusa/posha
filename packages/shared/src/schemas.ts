@@ -126,4 +126,26 @@ export const PreferencesUpdateSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'At least one preference is required');
 
+export const NotificationCategorySchema = z.enum([
+  'ticket_confirmation',
+  'room_starting',
+  'request_update',
+  'payout_status',
+  'safety_notice',
+  'legal_notice',
+]);
+export const NotificationChannelSchema = z.enum(['email', 'sms', 'push']);
+export const NotificationPreferencesSchema = z
+  .object({
+    ticket_confirmation: z
+      .object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() })
+      .strict(),
+    room_starting: z.object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() }).strict(),
+    request_update: z.object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() }).strict(),
+    payout_status: z.object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() }).strict(),
+    safety_notice: z.object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() }).strict(),
+    legal_notice: z.object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() }).strict(),
+  })
+  .strict();
+
 export const BlockUserSchema = z.object({ userId: z.string().uuid() }).strict();

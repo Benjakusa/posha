@@ -21,6 +21,10 @@ const userPrivacyMigrationPath = new URL(
   '../../../infra/db/migrations/006_user_privacy.sql',
   import.meta.url,
 );
+const notificationsMigrationPath = new URL(
+  '../../../infra/db/migrations/007_notifications.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -94,5 +98,17 @@ describe('identity and core database migration', () => {
     expect(up).toContain("status IN ('pending', 'processing')");
     expect(down).toContain('DROP INDEX data_requests_active_user_type_uidx');
     expect(down).toContain('DROP COLUMN handle_changed_at');
+  });
+
+  it('[P1-09] stores notification preferences and delivery status without message content', async () => {
+    const migration = await readFile(notificationsMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('CREATE TABLE notification_prefs');
+    expect(up).toContain('PRIMARY KEY (user_id, category, channel)');
+    expect(up).toContain('CREATE TABLE notifications');
+    expect(up).toContain("status IN ('sent', 'failed', 'suppressed')");
+    expect(up).not.toMatch(/(body|message|email_address|phone_number)\s+(text|varchar)/i);
+    expect(down).toContain('DROP TABLE notifications');
+    expect(down).toContain('DROP TABLE notification_prefs');
   });
 });

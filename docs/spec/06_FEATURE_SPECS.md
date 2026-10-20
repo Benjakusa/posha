@@ -109,7 +109,7 @@ Format: **ID — Behaviour.** Each criterion must map to at least one automated 
 - ADM-04 Flags and compliance gates can only be enabled by super_admin with recorded approval evidence reference.
 
 ## F11. Notifications & support (NOT, SUP)
-- NOT-01 Push/email/SMS templates for ticket confirmation, room starting, request updates, payout status, safety notices; user preferences respected (safety/legal notices exempt).
+- NOT-01 Push/email/SMS templates for ticket confirmation, room starting, request updates, payout status, safety notices; user preferences respected (safety/legal notices exempt). Templates contain no sensitive details and direct users to sign in for details.
 - SUP-01 Support agent tools: lookup (redacted), refund request, appeal handoff, no access to private content.
 
 ## F12. Non-functional (NFR)
