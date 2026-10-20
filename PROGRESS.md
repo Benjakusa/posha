@@ -1,14 +1,14 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
-Current phase: Phase 0
-Current task: P0-06
-Next task: P0-07
+Current phase: Phase 1
+Current task: P1-01
+Next task: P1-02
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
 |---|---|---|
-| 0 Foundation | In progress | – |
-| 1 Accounts/Age/RBAC | Not started | – |
+| 0 Foundation | Done | – |
+| 1 Accounts/Age/RBAC | In progress | – |
 | 2 Connect (text) | Not started | R1: pending |
 | 3 Random video | Not started | – |
 | 4 Creators/Payments | Not started | – |
@@ -23,7 +23,8 @@ Next task: P0-07
 | P0-02 | Done | 2026-10-20 | `eae7d7e` | `pnpm lint`, `pnpm typecheck`, `pnpm test` (4 tests), `pnpm --filter @posha/ui check:contrast` (15 pairs), and `pnpm format:check` pass | Added canonical Ember tokens, Tailwind preset, token snapshot, and CI contrast validation. |
 | P0-03 | Done | 2026-10-20 | `0fc1132` | `pnpm lint`, `pnpm typecheck`, `pnpm test` (8 shared tests), contrast, spec-coverage, and formatting pass | Added exact data-model enums, listed API error codes, RFC 7807 and Connect schemas, safe integer money DTOs, and KES formatting. Excess currency precision is rejected per `docs/DECISIONS.md`. |
 | P0-04 | Done | 2026-10-20 | `5fbbc9f` | `pnpm seed:validate`, Compose YAML parse, `pnpm lint`, `pnpm typecheck`, `pnpm test` (12 tests), contrast, spec-coverage, and formatting pass | Added local Postgres, Redis, MinIO, Mailpit and opt-in LiveKit, private buckets, and neutral fixtures. Docker is not installed here, so container startup was not exercised. |
-| P0-06 | In progress | 2026-10-20 | – | – | Implementing Nest API shell, PII-safe logging, telemetry, health, error filter, and OpenAPI export. |
+| P0-06 | Done | 2026-10-20 | `c3cebe4` | API tests (7), full `pnpm lint`, `pnpm typecheck`, `pnpm test` (19), `pnpm build`, OpenAPI export and drift check, contrast, seed validation, spec coverage, and formatting pass | Added Nest API shell, PII-safe Pino logging, OpenTelemetry, guarded health, RFC 7807 filter, and deterministic OpenAPI export. |
+| P0-07 | Done | 2026-10-20 | `fa3ce5c` | API tests (3), full `pnpm lint`, `pnpm typecheck`, `pnpm test` (22), `pnpm build`, OpenAPI export and drift check, contrast, seed validation, spec coverage, and formatting pass | Added fail-closed feature/compliance gate module, all gates default OFF, and reversible `compliance_gates` SQL migration. Database execution was not verified: Docker is unavailable and the host PostgreSQL rejected the local role. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
