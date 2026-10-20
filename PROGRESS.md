@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 1
-Current task: P1-09
-Next task: P2-01
+Current task: P2-02
+Next task: P2-03
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -35,6 +35,7 @@ Next task: P2-01
 | P1-07 | Done | 2026-10-20 | `0153b40` | Web flow and axe tests (5), full workspace lint/typecheck/test/build/format; production build contains manifest, SVG icon, and service worker | Added Vite/React Router app shell, OTP/age provider interface flow, verified-adult-gated five-tab shell, pseudonym and safety onboarding, privacy/export/deletion settings, and offline app shell. OTP delivery remains provider-blocked under P1-02. |
 | P1-08 | Blocked-External | 2026-10-20 | `4c07c77` | Admin tests (6, including ADM-01/ADM-04 and axe); full workspace lint, typecheck, test (83 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), build, format, contrast, and spec-coverage pass | Added responsive admin shell, MFA-gated session handling, role-filtered navigation, redacted audit viewer, and evidence/reason-required gate controls. Live sign-in and admin data/actions need the owner-selected staff SSO provider and server admin endpoints; the production auth adapter fails closed. All gates remain OFF. |
 | P1-09 | Blocked-External | 2026-10-20 | `PENDING` | Notification unit tests (4), migration contract test; full workspace lint, typecheck, build, and format pass; test passes (88 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`); contrast and spec-coverage pass | Added email/SMS/push provider interfaces, neutral templates, owner-scoped notification preference routes, preference persistence, and delivery status storage. Live delivery needs selection/configuration of email, SMS, and push providers. Safety and legal notices ignore user opt-outs. |
+| P2-01 | Done | 2026-10-20 | `23174f9` | Migration contract test; full workspace lint/typecheck/build/format pass, test passes (89 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), contrast and spec-coverage pass | Added reversible Connect sessions/messages, reports, and moderation-actions migration. Message bodies and sensitive report/action text are ciphertext; report snapshots require explicit consent; non-reported messages expire after seven days. Migration application against PostgreSQL awaits a configured test database. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
