@@ -83,6 +83,7 @@ Upload (pre-signed to quarantine bucket) → worker: virus scan, transcode, thum
 - All events validated with Zod schemas from `packages/shared`.
 - Backpressure: per-socket rate limit, max payload 8 KB, drop + warn on flood, auto-ban heuristics.
 - Presence in Redis with TTL heartbeats.
+- Socket.IO rooms use `RedisConnectIoAdapter` with dedicated, private Pub/Sub clients when the gateway is deployed across multiple API instances.
 - Horizontal scale: sticky sessions not required (Redis adapter); matcher is a leader-elected worker.
 
 ## 6. Security architecture

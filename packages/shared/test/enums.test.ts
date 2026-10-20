@@ -107,6 +107,7 @@ describe('shared API and data contracts', () => {
       'RATE_LIMIT_UNAVAILABLE',
       'GATE_DISABLED',
       'SESSION_NOT_FOUND',
+      'SERVICE_UNAVAILABLE',
       'HTTP_ERROR',
       'INTERNAL_SERVER_ERROR',
     ]);

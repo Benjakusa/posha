@@ -50,6 +50,7 @@ export const ErrorCodeSchema = z.enum([
   ErrorCodes.RATE_LIMIT_UNAVAILABLE,
   ErrorCodes.GATE_DISABLED,
   ErrorCodes.SESSION_NOT_FOUND,
+  ErrorCodes.SERVICE_UNAVAILABLE,
   ErrorCodes.HTTP_ERROR,
   ErrorCodes.INTERNAL_SERVER_ERROR,
 ]);
@@ -68,23 +69,6 @@ export const ProblemDetailsSchema = z
 export const CurrencySchema = z.string().regex(/^[A-Z]{3}$/);
 export const MoneyMinorSchema = z.bigint();
 export const MoneyMinorDtoSchema = z.number().int().safe().nonnegative();
-
-export const ConnectQueueJoinSchema = z
-  .object({
-    mode: SessionModeSchema,
-    interests: z.array(z.string().min(1)),
-    lang: z.string().min(1),
-    countryPref: z.string().length(2).optional(),
-  })
-  .strict();
-
-export const ConnectChatSendSchema = z
-  .object({
-    sessionId: z.string().uuid(),
-    body: z.string().min(1).max(1000),
-    clientMsgId: z.string().min(1),
-  })
-  .strict();
 
 export const HandleSchema = z
   .string()
@@ -147,5 +131,28 @@ export const NotificationPreferencesSchema = z
     legal_notice: z.object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() }).strict(),
   })
   .strict();
+
+export const ConnectQueueJoinSchema = z
+  .object({
+    mode: z.enum(['text', 'video']),
+    interests: z.array(z.string().trim().min(1).max(32)).max(20),
+    lang: z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/),
+    countryPref: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .optional(),
+  })
+  .strict();
+export const ConnectQueueLeaveSchema = z.object({}).strict();
+export const ConnectHeartbeatSchema = z.object({}).strict();
+export const ConnectChatSendSchema = z
+  .object({
+    sessionId: z.string().uuid(),
+    body: z.string().trim().min(1).max(1000),
+    clientMsgId: z.string().min(1).max(80),
+  })
+  .strict();
+export const ConnectChatTypingSchema = z.object({ sessionId: z.string().uuid() }).strict();
+export const ConnectSessionSchema = z.object({ sessionId: z.string().uuid() }).strict();
 
 export const BlockUserSchema = z.object({ userId: z.string().uuid() }).strict();

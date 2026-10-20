@@ -1,15 +1,15 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 1
-Current task: P2-02
-Next task: P2-03
+Current task: P2-03
+Next task: P2-04
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
 |---|---|---|
 | 0 Foundation | Done | – |
 | 1 Accounts/Age/RBAC | In progress | – |
-| 2 Connect (text) | Not started | R1: pending |
+| 2 Connect (text) | In progress | R1: pending |
 | 3 Random video | Not started | – |
 | 4 Creators/Payments | Not started | – |
 | 5 Live Rooms | Not started | – |
@@ -36,6 +36,7 @@ Next task: P2-03
 | P1-08 | Blocked-External | 2026-10-20 | `4c07c77` | Admin tests (6, including ADM-01/ADM-04 and axe); full workspace lint, typecheck, test (83 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), build, format, contrast, and spec-coverage pass | Added responsive admin shell, MFA-gated session handling, role-filtered navigation, redacted audit viewer, and evidence/reason-required gate controls. Live sign-in and admin data/actions need the owner-selected staff SSO provider and server admin endpoints; the production auth adapter fails closed. All gates remain OFF. |
 | P1-09 | Blocked-External | 2026-10-20 | `PENDING` | Notification unit tests (4), migration contract test; full workspace lint, typecheck, build, and format pass; test passes (88 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`); contrast and spec-coverage pass | Added email/SMS/push provider interfaces, neutral templates, owner-scoped notification preference routes, preference persistence, and delivery status storage. Live delivery needs selection/configuration of email, SMS, and push providers. Safety and legal notices ignore user opt-outs. |
 | P2-01 | Done | 2026-10-20 | `23174f9` | Migration contract test; full workspace lint/typecheck/build/format pass, test passes (89 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), contrast and spec-coverage pass | Added reversible Connect sessions/messages, reports, and moderation-actions migration. Message bodies and sensitive report/action text are ciphertext; report snapshots require explicit consent; non-reported messages expire after seven days. Migration application against PostgreSQL awaits a configured test database. |
+| P2-02 | Done | 2026-10-20 | `PENDING` | Gateway tests (6 for 3.4: auth/age gating, presence expiry, payload validation, gate-off video, flood limits, Redis failure); full workspace lint, typecheck, test (95 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), build, format, contrast, spec-coverage pass | Added Socket.IO `/connect` gateway, authenticate-before-message middleware, per-event account/age recheck, strict shared Zod events, Redis presence/rate-limit integration, and cross-instance adapter helper. Queue matching and message persistence remain behind the next service ports. |
 
 ## Blocked-External
 | ID | Waiting on | Since |

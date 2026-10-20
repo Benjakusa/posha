@@ -18,4 +18,11 @@ export {
   DisabledNotificationProvider,
 } from './notifications/notification-provider.js';
 export { NOTIFICATION_TEMPLATES } from './notifications/notification-templates.js';
+export { ConnectModule } from './connect/connect.module.js';
+export { ConnectGateway, ConnectRealtimeError } from './connect/connect.gateway.js';
+export {
+  RedisConnectPresenceStore,
+  MemoryConnectPresenceStore,
+} from './connect/connect-presence.store.js';
+export { RedisConnectIoAdapter } from './connect/redis-connect-io.adapter.js';
 export { ProblemDetailsExceptionFilter, toProblemDetails } from './problem-details.filter.js';

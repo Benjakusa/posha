@@ -16,7 +16,11 @@ Base: `/api/v1`. JSON. Auth: `Authorization: Bearer <access JWT>` (15 min) + ref
 ## 3. Connect
 REST: `GET /connect/prefs` `PUT /connect/prefs` `GET /connect/interests` `POST /blocks` `DELETE /blocks/:userId` `GET /blocks`
 Reports: `POST /reports {targetType,targetId,reasonCode,details,sessionId?}`
-**WS namespace `/connect`** (client→server / server→client):
+**WS namespace `/connect`** uses Socket.IO with the access token in handshake auth. The gateway rejects inactive or below-L2 accounts before messages are handled and caps packets at 8 KB.
+- Client→server: `heartbeat {}` `queue.join {mode:'text'|'video', interests[], lang, countryPref?}` `queue.leave {}`
+- `chat.send {sessionId, body ≤ 1000, clientMsgId}` `chat.typing {sessionId}` `session.next {sessionId}` `session.leave {sessionId}`
+- Server→client: `heartbeat.ack {at}` `queue.state {position?,estWaitSec?}` `queue.left {}` `chat.ack {clientMsgId}`
+- Planned matchmaking/relay responses:
 - `queue.join {mode,interests[],lang,countryPref?}` / `queue.state {position?,estWaitSec?}`
 - `queue.leave`
 - `match.found {sessionId, partner:{alias}, mode}`
@@ -25,7 +29,7 @@ Reports: `POST /reports {targetType,targetId,reasonCode,details,sessionId?}`
 - `session.next {sessionId}` `session.leave {sessionId}` / `session.ended {reason}`
 - `video.consent {sessionId, accept}` / `video.ready {token, url}` (gated)
 - `safety.warning {code}` (e.g. rate limit, filter hit)
-Errors: `error {code, message}`; codes include `AGE_LEVEL_REQUIRED`, `RATE_LIMITED`, `GATE_DISABLED`, `SESSION_NOT_FOUND`.
+All inbound event payloads are Zod-validated. Errors use `error {code, retryAfterMs?}` without exception details; codes include `AGE_LEVEL_REQUIRED`, `RATE_LIMITED`, `RATE_LIMIT_UNAVAILABLE`, `GATE_DISABLED`, `SESSION_NOT_FOUND`.
 
 ## 4. Discover & profiles
 `GET /discover/creators?q=&lang=&cat=&price_max=` · `GET /creators/:handle` · `GET /creators/:handle/posts` (previews for non-entitled)
