@@ -26,6 +26,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm --filter @posha/ui check:contrast
+      - run: pnpm seed:validate
+      - run: pnpm format:check
 
   spec-coverage:
     name: Spec coverage (initial stub)

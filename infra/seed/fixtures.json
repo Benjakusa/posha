@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "pending-p1-01",
+  "profiles": [
+    {
+      "fixtureKey": "member-01",
+      "handle": "test_member_01",
+      "displayName": "Test Member 01",
+      "locale": "en",
+      "country": "KE",
+      "interests": ["music", "books"]
+    },
+    {
+      "fixtureKey": "creator-01",
+      "handle": "test_creator_01",
+      "displayName": "Test Creator 01",
+      "locale": "en",
+      "country": "KE",
+      "interests": ["art", "music"]
+    }
+  ]
+}

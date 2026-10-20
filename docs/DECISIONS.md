@@ -11,3 +11,11 @@ P0-01 starts from a workspace containing only the spec pack and progress tracker
 ## 2026-10-20 — Money input precision
 
 Human-entered money is parsed from plain decimal strings into integer minor units. Inputs with more fractional digits than the currency allows are rejected instead of rounded; commission rounding remains governed by the bankers-rounding rule in `06` PAY-05.
+
+## 2026-10-20 — Infrastructure seed timing
+
+P0-04 adds schema-versioned neutral profile fixtures and validates them, but does not create a parallel application table: the users/profiles schema belongs to P1-01. The Compose stack seeds only private local object-storage buckets until the database migrations define the corresponding seed adapter.
+
+## 2026-10-20 — Local object storage image
+
+The local Compose stack uses MinIO's Quay-hosted community image because its Docker Hub image repository is archived. It remains a development-only S3-compatible service; production storage selection is outside P0-04.
