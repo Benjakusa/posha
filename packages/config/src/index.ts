@@ -1,2 +1,2 @@
 /** @packageDocumentation */
-export {};
+export { default as emberColors } from './tokens.json' with { type: 'json' };
