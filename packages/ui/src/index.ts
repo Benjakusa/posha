@@ -1,2 +1,1 @@
-/** @packageDocumentation */
-export {};
+export * from './components/primitives.js';

@@ -2,6 +2,7 @@ node_modules
 pnpm-lock.yaml
 coverage
 dist
+storybook-static
 docs/spec/**
 files (2)/**
 PROGRESS.md
