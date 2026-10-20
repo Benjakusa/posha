@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { Role } from '@posha/shared';
+import type { AgeLevel } from '@posha/shared';
 import type {
   AuthSession,
   AuthStore,
@@ -275,10 +276,11 @@ export class PostgresAuthStore implements AuthStore {
     const result = await this.pool.query<{
       id: string;
       status: UserAuthState['accountStatus'];
+      age_level: AgeLevel;
       roles: string[];
       totp_enabled: boolean;
     }>(
-      `SELECT u.id, u.status, u.totp_enabled,
+      `SELECT u.id, u.status, u.age_level, u.totp_enabled,
               coalesce(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
        FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
        WHERE ($1::boolean AND lower(u.email) = $2) OR (NOT $1::boolean AND u.phone = $2)
@@ -291,6 +293,7 @@ export class PostgresAuthStore implements AuthStore {
           id: row.id,
           roles: row.roles as Role[],
           accountStatus: row.status,
+          ageLevel: row.age_level,
           totpEnabled: row.totp_enabled,
         }
       : null;
@@ -314,6 +317,7 @@ export class PostgresAuthStore implements AuthStore {
         id: user.id,
         roles: ['member'] as Role[],
         accountStatus: 'active' as const,
+        ageLevel: 'L0' as AgeLevel,
         totpEnabled: false,
       };
     } catch (error) {
@@ -328,10 +332,11 @@ export class PostgresAuthStore implements AuthStore {
     const result = await this.pool.query<{
       roles: string[];
       status: UserAuthState['accountStatus'];
+      age_level: AgeLevel;
       totp_secret_encrypted: Buffer | null;
       totp_enabled: boolean;
     }>(
-      `SELECT u.status, u.totp_secret_encrypted, u.totp_enabled,
+      `SELECT u.status, u.age_level, u.totp_secret_encrypted, u.totp_enabled,
               coalesce(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
        FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
        WHERE u.id = $1 GROUP BY u.id`,
@@ -342,6 +347,7 @@ export class PostgresAuthStore implements AuthStore {
       ? {
           roles: row.roles as Role[],
           accountStatus: row.status,
+          ageLevel: row.age_level,
           encryptedTotpSecret: row.totp_secret_encrypted,
           totpEnabled: row.totp_enabled,
         }

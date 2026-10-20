@@ -36,6 +36,16 @@ function codeForStatus(status: number): string {
   }
 }
 
+function explicitCode(exception: unknown): string | undefined {
+  if (!(exception instanceof HttpException)) return undefined;
+  const body = exception.getResponse();
+  if (!body || typeof body !== 'object' || !('code' in body)) return undefined;
+  const code = (body as { code?: unknown }).code;
+  return typeof code === 'string' && Object.values(ErrorCodes).includes(code as never)
+    ? code
+    : undefined;
+}
+
 function titleForStatus(status: number): string {
   const frameworkTitle = HttpStatus[status];
   if (typeof frameworkTitle !== 'string') {
@@ -56,7 +66,7 @@ export function toProblemDetails(exception: unknown, traceId: string): ProblemDe
     type: 'about:blank',
     title,
     status,
-    code: codeForStatus(status),
+    code: explicitCode(exception) ?? codeForStatus(status),
     detail: status >= 500 ? 'An unexpected error occurred.' : 'The request could not be processed.',
     traceId,
   };

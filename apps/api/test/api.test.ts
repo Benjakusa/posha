@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { NotFoundException, type INestApplication } from '@nestjs/common';
+import { ForbiddenException, NotFoundException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { ProblemDetailsSchema } from '@posha/shared';
@@ -43,5 +43,13 @@ describe('POSHA API foundation', () => {
     const result = toProblemDetails(new NotFoundException(), 'trace-02');
     expect(result.code).toBe('NOT_FOUND');
     expect(result.status).toBe(404);
+  });
+
+  it('[P1-03] preserves allow-listed policy codes in problem responses', () => {
+    const result = toProblemDetails(
+      new ForbiddenException({ code: 'AGE_LEVEL_REQUIRED' }),
+      'trace-03',
+    );
+    expect(result).toMatchObject({ status: 403, code: 'AGE_LEVEL_REQUIRED' });
   });
 });

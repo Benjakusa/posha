@@ -1,4 +1,4 @@
-import type { Role } from '@posha/shared';
+import type { AgeLevel, Role } from '@posha/shared';
 
 export interface OtpChallenge {
   id: string;
@@ -26,6 +26,7 @@ export interface AuthSession {
 export interface UserAuthState {
   roles: readonly Role[];
   accountStatus: 'active' | 'suspended' | 'banned' | 'deleted';
+  ageLevel: AgeLevel;
   encryptedTotpSecret: Buffer | null;
   totpEnabled: boolean;
 }
@@ -34,6 +35,7 @@ export interface VerifiedUserIdentity {
   id: string;
   roles: readonly Role[];
   accountStatus: UserAuthState['accountStatus'];
+  ageLevel: AgeLevel;
   totpEnabled: boolean;
 }
 

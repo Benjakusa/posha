@@ -125,6 +125,7 @@ class MemoryAuthStore implements AuthStore {
       id: user.id,
       roles: ['member'] as Role[],
       accountStatus: 'active' as const,
+      ageLevel: 'L0' as const,
       totpEnabled: false,
     };
     const identity = user.email ?? user.phone;
@@ -133,6 +134,7 @@ class MemoryAuthStore implements AuthStore {
     this.users.set(user.id, {
       roles: verifiedUser.roles,
       accountStatus: 'active',
+      ageLevel: 'L0',
       encryptedTotpSecret: null,
       totpEnabled: false,
       lastCounter: null,
@@ -311,6 +313,7 @@ describe('authentication', () => {
     store.users.set(userId, {
       roles,
       accountStatus: 'active',
+      ageLevel: 'L0',
       encryptedTotpSecret: null,
       totpEnabled: false,
       lastCounter: null,
