@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 0
-Current task: P0-02
-Next task: P0-03
+Current task: P0-03
+Next task: P0-04
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -20,6 +20,7 @@ Next task: P0-03
 |---|---|---|---|---|---|
 | P0-01 | Done | 2026-10-20 | `053e49d` | `pnpm lint`, `pnpm typecheck`, `pnpm test` pass (zero tests exist yet); `pnpm format:check` passes | Initialized pnpm/Turborepo workspace, strict TS, lint/format/hooks, package shells. |
 | P0-05 | Done | 2026-10-20 | `053e49d` | CI workflow; `scripts/check-spec-coverage.mjs` finds 82 acceptance IDs | CI quality pipeline and spec-coverage scaffold added with P0-01 per phase order; feature-to-test mapping is not enforced until feature suites exist. |
+| P0-02 | Done | 2026-10-20 | `eae7d7e` | `pnpm lint`, `pnpm typecheck`, `pnpm test` (4 tests), `pnpm --filter @posha/ui check:contrast` (15 pairs), and `pnpm format:check` pass | Added canonical Ember tokens, Tailwind preset, token snapshot, and CI contrast validation. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
