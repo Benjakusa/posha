@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 1
-Current task: P1-08
-Next task: P1-09
+Current task: P1-09
+Next task: P2-01
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -33,10 +33,12 @@ Next task: P1-09
 | P1-05 | Done | 2026-10-20 | `6b86161` | Profile schema tests (3), API profile/privacy tests (6), full lint/typecheck/test/build/format; all 64 tests passed with isolated PostgreSQL; migrations 001–006 applied and migration 006 rolled back | Added self-service profiles/preferences, unique handle cooldown, symmetric blocks, JSON export, soft deletion/session revocation, queued 30-day PII purge, and reversible migration. |
 | P1-06 | Done | 2026-10-20 | `fb79637` | UI component and axe tests (5), full lint/typecheck/test/build/format; 72 tests passed and 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`; contrast check passes (15 pairs); Storybook production build passes | Added Ember themed React primitives, dark/light Storybook with accessibility addon, field/toggle/status states, and automated component accessibility checks. |
 | P1-07 | Done | 2026-10-20 | `0153b40` | Web flow and axe tests (5), full workspace lint/typecheck/test/build/format; production build contains manifest, SVG icon, and service worker | Added Vite/React Router app shell, OTP/age provider interface flow, verified-adult-gated five-tab shell, pseudonym and safety onboarding, privacy/export/deletion settings, and offline app shell. OTP delivery remains provider-blocked under P1-02. |
+| P1-08 | Blocked-External | 2026-10-20 | `PENDING` | Admin tests (6, including ADM-01/ADM-04 and axe); full workspace lint, typecheck, test (83 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), build, format, contrast, and spec-coverage pass | Added responsive admin shell, MFA-gated session handling, role-filtered navigation, redacted audit viewer, and evidence/reason-required gate controls. Live sign-in and admin data/actions need the owner-selected staff SSO provider and server admin endpoints; the production auth adapter fails closed. All gates remain OFF. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
 | P1-02 | OTP email/SMS delivery provider selection and credentials | 2026-10-20 |
+| P1-08 | Staff SSO provider selection and server endpoints for staff session, audit, and gate administration | 2026-10-20 |
 |---|---|---|
 
 ## FIX queue (do before new work)
@@ -49,6 +51,7 @@ Next task: P1-09
 4. Payout threshold/schedule (default: KES 2,000 weekly)
 5. Default commission (default: 20% platform / 80% creator)
 6. OTP email/SMS delivery provider
+7. Staff SSO provider
 
 ## Gates status (all must read OFF in prod until approved)
 AGE_PROVIDER_LIVE: OFF · RANDOM_VIDEO: OFF · CREATOR_MONETISATION: OFF · LIVE: OFF · PAYMENTS_LIVE: OFF · PRIVATE_SESSIONS: OFF · TIPS: OFF · GEO_*: OFF
