@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 1
-Current task: P1-03
-Next task: P1-04
+Current task: P1-04
+Next task: P1-05
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -27,6 +27,7 @@ Next task: P1-04
 | P0-07 | Done | 2026-10-20 | `fa3ce5c` | API tests (3), full `pnpm lint`, `pnpm typecheck`, `pnpm test` (22), `pnpm build`, OpenAPI export and drift check, contrast, seed validation, spec coverage, and formatting pass; both SQL migrations applied and rolled back on a temporary PostgreSQL database | Added fail-closed feature/compliance gate module, all gates default OFF, and reversible `compliance_gates` SQL migration. |
 | P1-01 | Done | 2026-10-20 | `cbd47e3` | API migration schema test; migrations applied and rolled back on temporary PostgreSQL; audit UPDATE/DELETE/TRUNCATE rejected and duplicate chain successors rejected; full lint, typecheck, test (23), build, OpenAPI drift, contrast, seed, spec coverage, and formatting checks pass | Added users, roles, auth sessions, age checks, profiles, blocks, append-only hash-chained audit log, default-off feature flags, and outbox schema. UUIDv7 IDs are supplied by the app. |
 | P1-02 | Blocked-External | 2026-10-20 | `4a88141` | 9 AUTH unit tests, 3 PostgreSQL integration tests; migrations 001–003 applied and rolled back; full lint, typecheck, test (33 passed; 3 DB tests skipped without `TEST_DATABASE_URL`), build, OpenAPI drift, contrast, seed, spec coverage, and formatting checks pass | Implemented OTP registration/login core, 15-minute JWTs, refresh rotation/reuse family revocation, encrypted TOTP, and PostgreSQL storage. Awaiting email/SMS delivery provider selection and credentials. Routes are deferred until P1-03 guards exist. |
+| P1-03 | Done | 2026-10-20 | `9718d34` | `authorization.test.ts` (17 tests), API tests (4), full lint, typecheck, test (39 passed; 3 DB tests skipped without `TEST_DATABASE_URL`), build, and format check pass | Added ordered policy guard classes, deny-by-default authorization evaluator, Redis-backed fixed-window limits with HMAC keys and fail-closed behavior, and policy error codes. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
