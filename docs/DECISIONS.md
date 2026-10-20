@@ -27,3 +27,7 @@ The API contract lists four domain error codes but also requires stable problem 
 ## 2026-10-20 — PostgreSQL migration runner
 
 Use `node-pg-migrate` with reversible SQL migrations. The first migration creates and seeds the compliance gate registry as blocked; the identity and feature-flag schema remains in P1-01. Migration execution requires `DATABASE_URL` and is exposed through the API workspace scripts.
+
+## 2026-10-20 — UUIDv7 generation
+
+The application supplies UUIDv7 primary keys rather than relying on a database default. The local PostgreSQL target is version 16, so the schema does not assume a native UUIDv7 generator. Migration backfills use timestamp-based UUIDv7 values for existing compliance gate rows.
