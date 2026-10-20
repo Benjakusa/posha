@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-20 by Codex
 Current phase: Phase 1
-Current task: P1-02
-Next task: P1-03
+Current task: P1-03
+Next task: P1-04
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -26,9 +26,11 @@ Next task: P1-03
 | P0-06 | Done | 2026-10-20 | `c3cebe4` | API tests (7), full `pnpm lint`, `pnpm typecheck`, `pnpm test` (19), `pnpm build`, OpenAPI export and drift check, contrast, seed validation, spec coverage, and formatting pass | Added Nest API shell, PII-safe Pino logging, OpenTelemetry, guarded health, RFC 7807 filter, and deterministic OpenAPI export. |
 | P0-07 | Done | 2026-10-20 | `fa3ce5c` | API tests (3), full `pnpm lint`, `pnpm typecheck`, `pnpm test` (22), `pnpm build`, OpenAPI export and drift check, contrast, seed validation, spec coverage, and formatting pass; both SQL migrations applied and rolled back on a temporary PostgreSQL database | Added fail-closed feature/compliance gate module, all gates default OFF, and reversible `compliance_gates` SQL migration. |
 | P1-01 | Done | 2026-10-20 | `cbd47e3` | API migration schema test; migrations applied and rolled back on temporary PostgreSQL; audit UPDATE/DELETE/TRUNCATE rejected and duplicate chain successors rejected; full lint, typecheck, test (23), build, OpenAPI drift, contrast, seed, spec coverage, and formatting checks pass | Added users, roles, auth sessions, age checks, profiles, blocks, append-only hash-chained audit log, default-off feature flags, and outbox schema. UUIDv7 IDs are supplied by the app. |
+| P1-02 | Blocked-External | 2026-10-20 | `4a88141` | 9 AUTH unit tests, 3 PostgreSQL integration tests; migrations 001–003 applied and rolled back; full lint, typecheck, test (33 passed; 3 DB tests skipped without `TEST_DATABASE_URL`), build, OpenAPI drift, contrast, seed, spec coverage, and formatting checks pass | Implemented OTP registration/login core, 15-minute JWTs, refresh rotation/reuse family revocation, encrypted TOTP, and PostgreSQL storage. Awaiting email/SMS delivery provider selection and credentials. Routes are deferred until P1-03 guards exist. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
+| P1-02 | OTP email/SMS delivery provider selection and credentials | 2026-10-20 |
 |---|---|---|
 
 ## FIX queue (do before new work)
@@ -40,6 +42,7 @@ Next task: P1-03
 3. Video infrastructure vendor (default: LiveKit)
 4. Payout threshold/schedule (default: KES 2,000 weekly)
 5. Default commission (default: 20% platform / 80% creator)
+6. OTP email/SMS delivery provider
 
 ## Gates status (all must read OFF in prod until approved)
 AGE_PROVIDER_LIVE: OFF · RANDOM_VIDEO: OFF · CREATOR_MONETISATION: OFF · LIVE: OFF · PAYMENTS_LIVE: OFF · PRIVATE_SESSIONS: OFF · TIPS: OFF · GEO_*: OFF
