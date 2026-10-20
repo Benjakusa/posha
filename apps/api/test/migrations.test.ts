@@ -25,6 +25,10 @@ const notificationsMigrationPath = new URL(
   '../../../infra/db/migrations/007_notifications.sql',
   import.meta.url,
 );
+const connectSafetyMigrationPath = new URL(
+  '../../../infra/db/migrations/008_connect_safety.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -110,5 +114,22 @@ describe('identity and core database migration', () => {
     expect(up).not.toMatch(/(body|message|email_address|phone_number)\s+(text|varchar)/i);
     expect(down).toContain('DROP TABLE notifications');
     expect(down).toContain('DROP TABLE notification_prefs');
+  });
+
+  it('[P2-01] adds reversible Connect and moderation tables with encrypted text columns', async () => {
+    const migration = await readFile(connectSafetyMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    for (const table of ['connect_sessions', 'connect_messages', 'reports', 'moderation_actions']) {
+      expect(up).toContain(`CREATE TABLE ${table}`);
+      expect(down).toContain(`DROP TABLE ${table}`);
+    }
+    expect(up).toContain('body_ciphertext bytea NOT NULL');
+    expect(up).toContain("interval '7 days'");
+    expect(up).toContain('snapshot_ciphertext bytea');
+    expect(up).toContain('CHECK ((snapshot_ciphertext IS NULL) OR snapshot_consent)');
+    expect(up).toContain('reason_ciphertext bytea NOT NULL');
+    expect(up).not.toMatch(/\b(body|details|snapshot|reason)\s+text\b/i);
+    expect(up).toContain('connect_sessions_active_started_idx');
+    expect(up).toContain('reports_status_created_idx');
   });
 });

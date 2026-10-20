@@ -47,3 +47,7 @@ The deletion workflow soft-deletes and re-gates immediately, revokes active sess
 ## 2026-10-20 — Profile avatar ownership
 
 Profile edits do not accept `avatarMediaId` until the media module can verify that the referenced media belongs to the current user. This avoids letting a profile mutation attach another account's media identifier.
+
+## 2026-10-20 — Connect and moderation text at rest
+
+Connect message bodies, report details/snapshots, and moderation reasons are stored as application-encrypted bytea. Report snapshots require explicit reporter consent; the API must cap them at the last 50 messages. Non-reported messages expire after seven days, while any separately preserved report evidence follows the legal-hold schedule.
