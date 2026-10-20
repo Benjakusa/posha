@@ -85,3 +85,45 @@ export const ConnectChatSendSchema = z
     clientMsgId: z.string().min(1),
   })
   .strict();
+
+export const HandleSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9_]{3,24}$/);
+export const ProfileUpdateSchema = z
+  .object({
+    handle: HandleSchema.optional(),
+    displayName: z.string().trim().max(80).nullable().optional(),
+    bio: z.string().trim().max(500).nullable().optional(),
+    interests: z.array(z.string().trim().min(1).max(32)).max(30).optional(),
+    languages: z
+      .array(
+        z
+          .string()
+          .trim()
+          .regex(/^[a-z]{2}(?:-[A-Z]{2})?$/),
+      )
+      .max(12)
+      .optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, 'At least one profile field is required');
+
+export const PreferencesUpdateSchema = z
+  .object({
+    locale: z
+      .string()
+      .regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
+      .optional(),
+    country: z
+      .string()
+      .length(2)
+      .regex(/^[A-Z]{2}$/)
+      .nullable()
+      .optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, 'At least one preference is required');
+
+export const BlockUserSchema = z.object({ userId: z.string().uuid() }).strict();

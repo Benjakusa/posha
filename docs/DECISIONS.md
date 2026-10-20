@@ -39,3 +39,11 @@ OTP delivery uses an injected `OtpDeliveryProvider`; no SMS/email vendor is sele
 ## 2026-10-20 — Age re-verification and provider expiry
 
 Starting age re-verification immediately returns the account to L0, and only the newest check may restore L2; late results from earlier checks cannot grant access. A passed provider result without a future expiry is rejected so age access cannot become indefinite. POSHA stores provider references and result metadata only, never raw identity documents.
+
+## 2026-10-20 — Account deletion purge window
+
+The deletion workflow soft-deletes and re-gates immediately, revokes active sessions, then queues PII erasure after a 30-day recovery window. The purge clears account and profile identifiers while retaining the deletion request and age-result metadata for their specified retention periods; future financial records are not modified by this purge.
+
+## 2026-10-20 — Profile avatar ownership
+
+Profile edits do not accept `avatarMediaId` until the media module can verify that the referenced media belongs to the current user. This avoids letting a profile mutation attach another account's media identifier.

@@ -17,6 +17,10 @@ const dataRequestsMigrationPath = new URL(
   '../../../infra/db/migrations/005_data_requests_repair.sql',
   import.meta.url,
 );
+const userPrivacyMigrationPath = new URL(
+  '../../../infra/db/migrations/006_user_privacy.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -81,5 +85,14 @@ describe('identity and core database migration', () => {
     expect(up).toContain("request_type IN ('export', 'deletion')");
     expect(up).toContain("status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')");
     expect(down).toContain('DROP TABLE data_requests');
+  });
+
+  it('[PRO-01] adds reversible handle cooldown metadata and active data request dedupe', async () => {
+    const migration = await readFile(userPrivacyMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('ADD COLUMN handle_changed_at');
+    expect(up).toContain("status IN ('pending', 'processing')");
+    expect(down).toContain('DROP INDEX data_requests_active_user_type_uidx');
+    expect(down).toContain('DROP COLUMN handle_changed_at');
   });
 });

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { generateUuidV7 } from '../src/auth/auth-crypto.js';
 import { PostgresAuthStore } from '../src/auth/postgres-auth.store.js';
 import { PostgresAgeAssuranceStore } from '../src/age/postgres-age.store.js';
+import { PostgresUsersStore } from '../src/users/postgres-users.store.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const databaseSuite = describe.skipIf(!databaseUrl);
@@ -143,5 +144,104 @@ databaseSuite('PostgreSQL authentication store', () => {
       'applied',
     );
     expect((await store.getUserAuthState(userId))?.ageLevel).toBe('L0');
+  });
+
+  it('[PRO-01] updates profile fields and enforces the 30-day handle cooldown', async () => {
+    const users = new PostgresUsersStore(pool);
+    await pool.query("UPDATE users SET created_at = now() - interval '31 days' WHERE id = $1", [
+      userId,
+    ]);
+    const handle = `changed_${userId.slice(-6)}`;
+    const profile = await users.updateProfile(
+      userId,
+      { handle, displayName: 'Member', interests: ['music'], languages: ['en'] },
+      new Date(),
+    );
+    expect(profile).toMatchObject({ handle, displayName: 'Member', interests: ['music'] });
+    await expect(
+      users.updateProfile(userId, { handle: `again_${userId.slice(-6)}` }, new Date()),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('[PRO-02] applies block visibility symmetrically and supports unblock', async () => {
+    const users = new PostgresUsersStore(pool);
+    const now = new Date();
+    const targetId = generateUuidV7(now);
+    await store.createVerifiedUser({
+      id: targetId,
+      roleId: generateUuidV7(now),
+      email: `${targetId}@example.test`,
+      phone: null,
+      handle: `target_${targetId.slice(-8)}`,
+      chatAlias: `Target-${targetId.slice(-6)}`,
+    });
+    try {
+      await users.blockUser(userId, targetId, generateUuidV7(now), now);
+      expect(await users.areBlockedEitherWay(userId, targetId)).toBe(true);
+      expect(await users.listBlocks(userId)).toHaveLength(1);
+      await users.unblockUser(userId, targetId);
+      expect(await users.areBlockedEitherWay(userId, targetId)).toBe(false);
+    } finally {
+      await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
+    }
+  });
+
+  it('[PRO-04] completes an export request in the data request ledger', async () => {
+    const users = new PostgresUsersStore(pool);
+    const now = new Date();
+    const request = await users.createDataRequest(userId, 'export', generateUuidV7(now), now);
+    expect(request.status).toBe('pending');
+    await users.completeExportRequest(userId, request.id, now);
+    const row = await pool.query<{ status: string; completed_at: Date | null }>(
+      'SELECT status, completed_at FROM data_requests WHERE id = $1',
+      [request.id],
+    );
+    expect(row.rows[0]).toMatchObject({ status: 'completed' });
+    expect(row.rows[0]?.completed_at).toBeInstanceOf(Date);
+  });
+
+  it('[PRO-03] soft-deletes the user, re-gates age, and revokes sessions', async () => {
+    const now = new Date();
+    await pool.query("UPDATE users SET age_level = 'L2' WHERE id = $1", [userId]);
+    const session = {
+      id: generateUuidV7(now),
+      userId,
+      familyId: generateUuidV7(now),
+      refreshHash: `delete-${userId}`,
+      roles: ['member'] as const,
+      expiresAt: new Date(now.getTime() + 86_400_000),
+      familyExpiresAt: new Date(now.getTime() + 86_400_000),
+      revokedAt: null,
+      mfaVerifiedAt: null,
+    };
+    await store.createSession(session);
+    const users = new PostgresUsersStore(pool);
+    const request = await users.createDataRequest(userId, 'deletion', generateUuidV7(now), now);
+    const purged = await users.purgeDueDeletionRequests(
+      new Date(now.getTime() + 31 * 24 * 60 * 60_000),
+      30 * 24 * 60 * 60_000,
+    );
+    const result = await pool.query<{
+      status: string;
+      age_level: string;
+      deleted_at: Date | null;
+      email: string | null;
+      handle: string;
+    }>('SELECT status, age_level, deleted_at, email, handle FROM users WHERE id = $1', [userId]);
+    const savedSession = await pool.query<{ revoked_at: Date | null }>(
+      'SELECT revoked_at FROM sessions_auth WHERE id = $1',
+      [session.id],
+    );
+    expect(request.requestType).toBe('deletion');
+    expect(purged).toBe(1);
+    expect(result.rows[0]).toMatchObject({ status: 'deleted', age_level: 'L0', email: null });
+    expect(result.rows[0]?.handle).toMatch(/^deleted_/);
+    expect(result.rows[0]?.deleted_at).toBeInstanceOf(Date);
+    expect(savedSession.rows[0]?.revoked_at).toBeInstanceOf(Date);
+    const requestStatus = await pool.query<{ status: string }>(
+      'SELECT status FROM data_requests WHERE id = $1',
+      [request.id],
+    );
+    expect(requestStatus.rows[0]?.status).toBe('completed');
   });
 });
