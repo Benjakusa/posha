@@ -18,8 +18,8 @@ Next task: P0-03
 ## Task log (append; one row per task)
 | ID | Status | Date | Commit | Tests/Evidence | Notes |
 |---|---|---|---|---|---|
-| P0-01 | Done | 2026-10-20 | pending | `pnpm lint`, `pnpm typecheck`, `pnpm test` pass | Initialized pnpm/Turborepo workspace, strict TS, lint/format/hooks, package shells. |
-| P0-05 | Done | 2026-10-20 | pending | CI workflow; `scripts/check-spec-coverage.mjs` finds 82 acceptance IDs | CI quality pipeline and spec-coverage scaffold added with P0-01 per phase order; feature-to-test mapping is not enforced until feature suites exist. |
+| P0-01 | Done | 2026-10-20 | `053e49d` | `pnpm lint`, `pnpm typecheck`, `pnpm test` pass (zero tests exist yet); `pnpm format:check` passes | Initialized pnpm/Turborepo workspace, strict TS, lint/format/hooks, package shells. |
+| P0-05 | Done | 2026-10-20 | `053e49d` | CI workflow; `scripts/check-spec-coverage.mjs` finds 82 acceptance IDs | CI quality pipeline and spec-coverage scaffold added with P0-01 per phase order; feature-to-test mapping is not enforced until feature suites exist. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
