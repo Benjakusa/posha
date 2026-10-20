@@ -2,6 +2,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { generateUuidV7 } from '../src/auth/auth-crypto.js';
 import { PostgresAuthStore } from '../src/auth/postgres-auth.store.js';
+import { PostgresAgeAssuranceStore } from '../src/age/postgres-age.store.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const databaseSuite = describe.skipIf(!databaseUrl);
@@ -89,5 +90,58 @@ databaseSuite('PostgreSQL authentication store', () => {
     expect(await store.consumeTotpCounter(userId, 11n)).toBe(true);
     expect(await store.consumeTotpCounter(userId, 11n)).toBe(false);
     expect((await store.getUserAuthState(userId))?.totpEnabled).toBe(true);
+  });
+
+  it('[AGE-04] re-gates expired age checks before policy guards read account state', async () => {
+    const now = new Date();
+    const checkId = generateUuidV7(now);
+    await pool.query(
+      `INSERT INTO age_checks (id, user_id, provider, status, level_result, expires_at)
+       VALUES ($1, $2, 'test', 'passed', 'L2', $3)`,
+      [checkId, userId, new Date(now.getTime() - 1_000)],
+    );
+    await pool.query("UPDATE users SET age_level = 'L2' WHERE id = $1", [userId]);
+
+    expect((await store.getUserAuthState(userId))?.ageLevel).toBe('L0');
+  });
+
+  it('[AGE-03] applies provider events once and prevents stale checks from restoring L2', async () => {
+    const ageStore = new PostgresAgeAssuranceStore(pool);
+    const now = new Date();
+    const firstId = generateUuidV7(now);
+    const firstRef = `provider-${firstId}`;
+    await ageStore.startCheck({
+      id: firstId,
+      userId,
+      provider: 'test',
+      providerRef: firstRef,
+      createdAt: now,
+    });
+    const firstResult = {
+      provider: 'test',
+      eventId: `event-${firstId}`,
+      providerRef: firstRef,
+      result: 'passed' as const,
+      expiresAt: new Date(now.getTime() + 60_000),
+      evidenceRef: null,
+    };
+    expect(await ageStore.applyWebhook(firstResult)).toBe('applied');
+    expect(await ageStore.applyWebhook(firstResult)).toBe('duplicate');
+    expect((await store.getUserAuthState(userId))?.ageLevel).toBe('L2');
+
+    const secondNow = new Date(now.getTime() + 10);
+    const secondId = generateUuidV7(secondNow);
+    await ageStore.startCheck({
+      id: secondId,
+      userId,
+      provider: 'test',
+      providerRef: `provider-${secondId}`,
+      createdAt: secondNow,
+    });
+    expect((await store.getUserAuthState(userId))?.ageLevel).toBe('L0');
+    expect(await ageStore.applyWebhook({ ...firstResult, eventId: `late-${firstId}` })).toBe(
+      'applied',
+    );
+    expect((await store.getUserAuthState(userId))?.ageLevel).toBe('L0');
   });
 });

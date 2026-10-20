@@ -9,6 +9,10 @@ const authMigrationPath = new URL(
   '../../../infra/db/migrations/003_auth_security.sql',
   import.meta.url,
 );
+const ageMigrationPath = new URL(
+  '../../../infra/db/migrations/004_age_assurance.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -54,5 +58,15 @@ describe('identity and core database migration', () => {
     expect(down).toContain('DROP TABLE auth_challenges');
     expect(down).toContain('DROP COLUMN family_id');
     expect(down).toContain('DROP COLUMN totp_secret_encrypted');
+  });
+
+  it('[P1-04] stores idempotent age provider events and rolls the migration back cleanly', async () => {
+    const migration = await readFile(ageMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('age_checks_provider_ref_uidx');
+    expect(up).toContain('PRIMARY KEY (provider, provider_event_id)');
+    expect(up).not.toMatch(/(image|document|photo|selfie)_?(url|data|bytes|blob)/i);
+    expect(down).toContain('DROP TABLE age_webhook_events');
+    expect(down).toContain('DROP INDEX age_checks_provider_ref_uidx');
   });
 });

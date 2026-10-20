@@ -8,7 +8,7 @@ import { telemetryReady, telemetrySdk } from './instrumentation.js';
 async function bootstrap(): Promise<void> {
   await telemetryReady;
   const config = validateApiConfig();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix('api/v1');
   app.useLogger(app.get(Logger));
   app.useGlobalFilters(new ProblemDetailsExceptionFilter());

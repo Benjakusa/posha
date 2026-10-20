@@ -35,3 +35,7 @@ The application supplies UUIDv7 primary keys rather than relying on a database d
 ## 2026-10-20 — Authentication delivery and route ordering
 
 OTP delivery uses an injected `OtpDeliveryProvider`; no SMS/email vendor is selected in the spec, so provider credentials and transport remain external. Auth routes are deferred until P1-03 provides the required policy guards. Refresh-token families have a 30-day absolute lifetime; access tokens keep the specified 15-minute lifetime.
+
+## 2026-10-20 — Age re-verification and provider expiry
+
+Starting age re-verification immediately returns the account to L0, and only the newest check may restore L2; late results from earlier checks cannot grant access. A passed provider result without a future expiry is rejected so age access cannot become indefinite. POSHA stores provider references and result metadata only, never raw identity documents.

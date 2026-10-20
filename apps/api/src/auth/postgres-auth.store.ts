@@ -329,6 +329,19 @@ export class PostgresAuthStore implements AuthStore {
   }
 
   async getUserAuthState(userId: string): Promise<UserAuthState | null> {
+    await this.pool.query(
+      `UPDATE users u SET age_level = 'L0', updated_at = now()
+       WHERE u.id = $1 AND u.age_level <> 'L0'
+         AND EXISTS (
+           SELECT 1 FROM age_checks c
+           WHERE c.user_id = u.id AND c.status = 'passed' AND c.expires_at <= now()
+             AND c.id = (
+               SELECT latest.id FROM age_checks latest
+               WHERE latest.user_id = u.id ORDER BY latest.created_at DESC LIMIT 1
+             )
+         )`,
+      [userId],
+    );
     const result = await this.pool.query<{
       roles: string[];
       status: UserAuthState['accountStatus'];
