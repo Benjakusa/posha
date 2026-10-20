@@ -13,6 +13,10 @@ const ageMigrationPath = new URL(
   '../../../infra/db/migrations/004_age_assurance.sql',
   import.meta.url,
 );
+const dataRequestsMigrationPath = new URL(
+  '../../../infra/db/migrations/005_data_requests_repair.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -68,5 +72,14 @@ describe('identity and core database migration', () => {
     expect(up).not.toMatch(/(image|document|photo|selfie)_?(url|data|bytes|blob)/i);
     expect(down).toContain('DROP TABLE age_webhook_events');
     expect(down).toContain('DROP INDEX age_checks_provider_ref_uidx');
+  });
+
+  it('[FIX-001] restores the data request table needed by export and deletion workflows', async () => {
+    const migration = await readFile(dataRequestsMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('CREATE TABLE data_requests');
+    expect(up).toContain("request_type IN ('export', 'deletion')");
+    expect(up).toContain("status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')");
+    expect(down).toContain('DROP TABLE data_requests');
   });
 });
