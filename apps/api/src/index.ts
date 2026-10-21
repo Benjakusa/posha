@@ -46,5 +46,6 @@ export * from './connect/connect-chat-abuse.store.js';
 export * from './connect/connect-sfu.provider.js';
 export * from './connect/connect-video-token.controller.js';
 export * from './connect/connect-video-token.service.js';
+export * from './connect/connect-video-moderation.service.js';
 export * from './connect/connect-safety.controller.js';
 export * from './connect/connect-safety.service.js';

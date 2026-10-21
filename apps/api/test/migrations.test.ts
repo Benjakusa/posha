@@ -37,6 +37,10 @@ const moderationWorkflowMigrationPath = new URL(
   '../../../infra/db/migrations/011_moderation_workflow.sql',
   import.meta.url,
 );
+const connectVideoModerationMigrationPath = new URL(
+  '../../../infra/db/migrations/012_connect_video_moderation.sql',
+  import.meta.url,
+);
 const connectMessageControlsMigrationPath = new URL(
   '../../../infra/db/migrations/009_connect_message_controls.sql',
   import.meta.url,
@@ -181,5 +185,17 @@ describe('moderation workflow migration', () => {
     expect(up).not.toMatch(/\b(appeal|decision_reason)\s+text\b/i);
     expect(down).toContain('DROP TABLE appeals');
     expect(down).toContain('DROP COLUMN revoked_at');
+  });
+});
+
+describe('Connect video moderation migration', () => {
+  it('[P3-03] stores only high-confidence moderation flags and rolls back cleanly', async () => {
+    const migration = await readFile(connectVideoModerationMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('connect_video_moderation_flags');
+    expect(up).toContain("status IN ('open', 'actioned', 'dismissed')");
+    expect(up).toContain('confidence >= 0 AND confidence <= 1');
+    expect(up).not.toMatch(/\b(frame|image|video)\s+bytea\b/i);
+    expect(down).toContain('DROP TABLE connect_video_moderation_flags');
   });
 });

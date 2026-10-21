@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConnectSessionSchema, ErrorCodes } from '@posha/shared';
 import { FeatureFlagsService } from '../flags/feature-flags.service.js';
 import type { ConnectSessionStore, ConnectVideoConsentRecord } from './connect-session.store.js';
@@ -57,6 +62,7 @@ export class ConnectVideoTokenService {
     private readonly consent: VideoConsentVerifier,
     private readonly featureFlags: FeatureFlagsService,
     private readonly now: () => Date = () => new Date(),
+    private readonly videoClassifierAvailable: () => boolean = () => true,
   ) {}
 
   async issueForParticipant(userId: string, rawSessionId: unknown) {
@@ -75,6 +81,8 @@ export class ConnectVideoTokenService {
     }
     if (!(await this.consent.hasMutualConsent(session.id)))
       throw new ForbiddenException({ code: ErrorCodes.GATE_DISABLED });
+    if (!this.videoClassifierAvailable())
+      throw new ServiceUnavailableException({ code: ErrorCodes.SERVICE_UNAVAILABLE });
 
     const now = this.now();
     const roomName = `connect-${session.id}`;

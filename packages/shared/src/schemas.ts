@@ -160,6 +160,12 @@ export const ConnectSessionSchema = z.object({ sessionId: z.string().uuid() }).s
 export const ConnectVideoConsentSchema = ConnectSessionSchema.extend({
   accept: z.boolean(),
 }).strict();
+export const ConnectVideoFrameSchema = ConnectSessionSchema.extend({
+  frameBase64: z
+    .string()
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/)
+    .max(6400),
+}).strict();
 export const ConnectReportSchema = z
   .object({
     sessionId: z.string().uuid(),

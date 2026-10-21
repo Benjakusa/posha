@@ -52,6 +52,34 @@ export function ConnectPage({
     return () => localStream?.getTracks().forEach((track) => track.stop());
   }, [localStream]);
 
+  useEffect(() => {
+    if (!localStream || !videoReady || mode !== 'video' || !sessionId) return;
+    let sampling = false;
+    const timer = window.setInterval(() => {
+      const video = previewRef.current;
+      if (!video || video.videoWidth === 0 || video.videoHeight === 0 || sampling) return;
+      sampling = true;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 160;
+        canvas.height = 90;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frameBase64 = canvas
+          .toDataURL('image/jpeg', 0.25)
+          .slice('data:image/jpeg;base64,'.length);
+        if (frameBase64.length <= 6_400)
+          socketRef.current?.emit('video.frame', { sessionId, frameBase64 });
+      } catch {
+        // Sampling failures leave the local preview and call controls available.
+      } finally {
+        sampling = false;
+      }
+    }, 3_000);
+    return () => window.clearInterval(timer);
+  }, [localStream, videoReady, mode, sessionId]);
+
   useEffect(
     () => () => {
       socketRef.current?.disconnect();
@@ -226,6 +254,7 @@ export function ConnectPage({
   function leaveSession() {
     if (!sessionId || leavingSession.current) return;
     leavingSession.current = true;
+    setLocalStream(null);
     socketRef.current?.emit('session.leave', { sessionId });
     setNotice('Leaving the conversation…');
     window.setTimeout(() => {
@@ -349,14 +378,20 @@ export function ConnectPage({
             <div className="connect-session__actions">
               <Button
                 disabled={leavingSession.current}
-                onClick={() => setSafetyAction('report')}
+                onClick={() => {
+                  setLocalStream(null);
+                  setSafetyAction('report');
+                }}
                 variant="secondary"
               >
                 Report
               </Button>
               <Button
                 disabled={leavingSession.current}
-                onClick={() => setSafetyAction('block')}
+                onClick={() => {
+                  setLocalStream(null);
+                  setSafetyAction('block');
+                }}
                 variant="danger"
               >
                 Block
@@ -366,9 +401,10 @@ export function ConnectPage({
           {mode === 'video' && !videoConsentAccepted && !videoConsentSubmitted ? (
             <div className="feature-card" aria-label="Video consent">
               <p>
-                Video is optional. Your camera and microphone stay off until both people accept. You
-                can decline or leave at any time. Keep the conversation non-explicit and report
-                anything that makes you uncomfortable.
+                Video is optional. Your camera and microphone stay off until both people accept and
+                you allow access. If enabled, small video frames are periodically sampled for
+                automated safety checks and are not saved. You can decline or leave at any time.
+                Keep the conversation non-explicit and report anything that makes you uncomfortable.
               </p>
               <Button disabled={leavingSession.current} onClick={() => submitVideoConsent(true)}>
                 Accept video

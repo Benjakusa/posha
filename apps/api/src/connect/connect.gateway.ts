@@ -17,6 +17,7 @@ import {
   ConnectQueueLeaveSchema,
   ConnectSessionSchema,
   ConnectVideoConsentSchema,
+  ConnectVideoFrameSchema,
   ErrorCodes,
 } from '@posha/shared';
 import type { AuthStore } from '../auth/auth-store.js';
@@ -42,6 +43,10 @@ import {
   CONNECT_VIDEO_CONSENT_SERVICE,
   ConnectVideoConsentService,
 } from './connect-video-token.service.js';
+import {
+  CONNECT_VIDEO_MODERATION_SERVICE,
+  ConnectVideoModerationService,
+} from './connect-video-moderation.service.js';
 
 interface SocketPrincipal {
   userId: string;
@@ -77,6 +82,7 @@ const EVENT_POLICIES: Record<string, RealtimeRatePolicy> = {
     windowMs: 60_000,
     keyBy: 'principal',
   },
+  'video.frame': { name: 'connect.video.frame', limit: 1, windowMs: 2_000, keyBy: 'principal' },
 };
 
 const ALLOWED_ERROR_CODES = new Set<string>([
@@ -117,6 +123,9 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     @Optional()
     @Inject(CONNECT_VIDEO_CONSENT_SERVICE)
     private readonly videoConsent?: ConnectVideoConsentService,
+    @Optional()
+    @Inject(CONNECT_VIDEO_MODERATION_SERVICE)
+    private readonly videoModeration?: ConnectVideoModerationService,
   ) {}
 
   afterInit(server: Namespace): void {
@@ -283,6 +292,38 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
       const state = { sessionId: parsed.sessionId, mutualAccepted: record.mutualAccepted };
       client.emit('video.consent.state', state);
       client.to(record.partnerUserId).emit('video.consent.state', state);
+    } catch (error) {
+      this.emitError(client, error);
+    }
+  }
+
+  @SubscribeMessage('video.frame')
+  async inspectVideoFrame(
+    @ConnectedSocket() client: ConnectSocket,
+    @MessageBody() raw: unknown,
+  ): Promise<void> {
+    const parsed = await this.prepare(client, 'video.frame', ConnectVideoFrameSchema, raw);
+    if (!parsed) return;
+    if (!this.videoModeration) {
+      client.emit('error', { code: ErrorCodes.SERVICE_UNAVAILABLE });
+      return;
+    }
+    try {
+      const result = await this.videoModeration.inspectFrame(
+        client.data.principal!.userId,
+        parsed.sessionId,
+        parsed.frameBase64,
+      );
+      if (!result.ended) return;
+      const payload = { sessionId: parsed.sessionId, reason: 'leave' } as const;
+      client.emit('session.ended', payload);
+      client.emit('safety.warning', { code: ErrorCodes.SAFETY_ESCALATED });
+      if (result.partnerUserId) {
+        client.to(result.partnerUserId).emit('session.ended', payload);
+        client
+          .to(result.partnerUserId)
+          .emit('safety.warning', { code: ErrorCodes.SAFETY_ESCALATED });
+      }
     } catch (error) {
       this.emitError(client, error);
     }

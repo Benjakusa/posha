@@ -71,3 +71,7 @@ A chat report targets the session, resolves participant membership server-side, 
 ## Connect member UI behavior (P2-06)
 
 The member flow uses the `/connect` Socket.IO namespace with the short-lived access token in handshake auth, and sends only text-mode queue requests. Video remains inaccessible while `GATE:RANDOM_VIDEO` is OFF. Queue state, match aliases, messages, safety warnings, and end events use the existing server contracts; session IDs stay private to the current client. The UI disconnects into a recoverable error state after transport loss instead of blindly reconnecting to a potentially ended session. Mobile actions remain visible in the chat header/footer, with no movement animation required.
+
+## Random video consent and sampled-frame moderation (P3-02/P3-03)
+
+Consent is persisted per session participant; video tokens are issued only when both participants have accepted and a video-frame classifier is configured. Browser camera/microphone access requires a separate user action after mutual consent. The client samples a low-resolution JPEG every three seconds only after permission, sends at most 4,800 decoded bytes per sample, and does not retain frame data. The server never writes frame bytes to storage; high-confidence classifier results create a durable account/session moderation flag containing category, confidence, and classifier version, then end the call. Missing or failed classifier/storage dependencies close the call and fail closed. The classifier integration defaults unavailable and `GATE:RANDOM_VIDEO` stays OFF.

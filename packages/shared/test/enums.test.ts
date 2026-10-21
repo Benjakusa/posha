@@ -20,6 +20,7 @@ import {
 import {
   ConnectChatSendSchema,
   ConnectQueueJoinSchema,
+  ConnectVideoFrameSchema,
   ErrorCodeSchema,
   ProblemDetailsSchema,
 } from '../src/schemas.js';
@@ -146,6 +147,19 @@ describe('shared API and data contracts', () => {
         body: 'x'.repeat(1001),
         clientMsgId: 'client-message-01',
       }).success,
+    ).toBe(false);
+  });
+
+  it('[P3-03] bounds sampled video frame payloads to small base64 images', () => {
+    const sessionId = '0190f75a-7c2a-7b9a-8dc8-e9d3228f1150';
+    expect(ConnectVideoFrameSchema.safeParse({ sessionId, frameBase64: 'aGVsbG8=' }).success).toBe(
+      true,
+    );
+    expect(
+      ConnectVideoFrameSchema.safeParse({ sessionId, frameBase64: 'not an image' }).success,
+    ).toBe(false);
+    expect(
+      ConnectVideoFrameSchema.safeParse({ sessionId, frameBase64: 'A'.repeat(6401) }).success,
     ).toBe(false);
   });
 });

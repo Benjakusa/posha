@@ -10,6 +10,7 @@ import { RATE_LIMIT_STORE } from '../policies/rate-limit.store.js';
 import { CONNECT_PRESENCE_STORE } from './connect-presence.store.js';
 import type { ConnectPresenceStore } from './connect-presence.store.js';
 import { CONNECT_REALTIME_PORT } from './connect-realtime.port.js';
+import type { ConnectRealtimePort } from './connect-realtime.port.js';
 import { MATCHING_STORE, RECENT_SKIP_STORE } from './matching-store.js';
 import type { MatchingStore, RecentSkipStore } from './matching-store.js';
 import { CONNECT_SESSION_STORE } from './connect-session.store.js';
@@ -54,7 +55,18 @@ import { LiveKitSfuProvider, SFU_PROVIDER } from './connect-sfu.provider.js';
 import type { SfuProvider } from './connect-sfu.provider.js';
 import { CONNECT_CHAT_ABUSE_STORE } from './connect-chat-abuse.store.js';
 import type { ConnectChatAbuseStore } from './connect-chat-abuse.store.js';
-
+import {
+  CONNECT_VIDEO_FRAME_CLASSIFIER,
+  CONNECT_VIDEO_MODERATION_SERVICE,
+  CONNECT_VIDEO_MODERATION_STORE,
+  ConnectVideoModerationService,
+  PostgresConnectVideoModerationStore,
+  UnavailableConnectVideoFrameClassifier,
+} from './connect-video-moderation.service.js';
+import type {
+  ConnectVideoFrameClassifier,
+  ConnectVideoModerationStore,
+} from './connect-video-moderation.service.js';
 const CONNECT_POOL = Symbol('CONNECT_POOL');
 
 export interface ConnectModuleOptions {
@@ -76,6 +88,8 @@ export interface ConnectModuleOptions {
   chatAbuseStore: ConnectChatAbuseStore;
   sfuProvider?: SfuProvider;
   videoConsentVerifier?: VideoConsentVerifier;
+  videoFrameClassifier?: ConnectVideoFrameClassifier;
+  videoModerationStore?: ConnectVideoModerationStore;
 }
 
 @Module({})
@@ -108,6 +122,15 @@ export class ConnectModule {
         { provide: CONNECT_MESSAGE_CIPHER, useValue: options.messageCipher },
         { provide: CONNECT_MODERATION_PROVIDER, useValue: options.moderationProvider },
         { provide: CONNECT_CHAT_ABUSE_STORE, useValue: options.chatAbuseStore },
+        {
+          provide: CONNECT_VIDEO_FRAME_CLASSIFIER,
+          useValue: options.videoFrameClassifier ?? new UnavailableConnectVideoFrameClassifier(),
+        },
+        {
+          provide: CONNECT_VIDEO_MODERATION_STORE,
+          useValue:
+            options.videoModerationStore ?? new PostgresConnectVideoModerationStore(options.pool),
+        },
         ConnectObservabilityService,
         ConnectMetricsGuard,
         { provide: SFU_PROVIDER, useValue: options.sfuProvider ?? new LiveKitSfuProvider() },
@@ -124,13 +147,40 @@ export class ConnectModule {
           inject: [CONNECT_SESSION_STORE, FeatureFlagsService],
         },
         {
+          provide: CONNECT_VIDEO_MODERATION_SERVICE,
+          useFactory: (
+            sessions: ConnectSessionStore,
+            classifier: ConnectVideoFrameClassifier,
+            moderation: ConnectVideoModerationStore,
+            connect: ConnectRealtimePort,
+            featureFlags: FeatureFlagsService,
+          ) =>
+            new ConnectVideoModerationService(
+              sessions,
+              classifier,
+              moderation,
+              connect,
+              featureFlags,
+            ),
+          inject: [
+            CONNECT_SESSION_STORE,
+            CONNECT_VIDEO_FRAME_CLASSIFIER,
+            CONNECT_VIDEO_MODERATION_STORE,
+            CONNECT_REALTIME_PORT,
+            FeatureFlagsService,
+          ],
+        },
+        {
           provide: ConnectVideoTokenService,
           useFactory: (
             sessions: ConnectSessionStore,
             sfu: SfuProvider,
             consent: VideoConsentVerifier,
             featureFlags: FeatureFlagsService,
-          ) => new ConnectVideoTokenService(sessions, sfu, consent, featureFlags),
+          ) =>
+            new ConnectVideoTokenService(sessions, sfu, consent, featureFlags, undefined, () =>
+              Boolean(options.videoFrameClassifier),
+            ),
           inject: [
             CONNECT_SESSION_STORE,
             SFU_PROVIDER,

@@ -16,6 +16,11 @@ import {
   SessionVideoConsentVerifier,
 } from '../src/connect/connect-video-token.service.js';
 import { FakeSfuProvider, LiveKitSfuProvider } from '../src/connect/connect-sfu.provider.js';
+import {
+  ConnectVideoModerationService,
+  FakeConnectVideoFrameClassifier,
+  MemoryConnectVideoModerationStore,
+} from '../src/connect/connect-video-moderation.service.js';
 
 const now = new Date('2026-10-21T12:00:00.000Z');
 
@@ -137,6 +142,26 @@ describe('Connect video token service (P3-01)', () => {
     expect(result.token).not.toContain(session.userA);
   });
 
+  it('refuses room tokens when the production frame classifier is missing', async () => {
+    const sessions = new MemoryConnectSessionStore();
+    const session = sessionRecord();
+    sessions.sessions.set(session.id, session);
+    await sessions.recordVideoConsent(session.id, session.userA, true);
+    await sessions.recordVideoConsent(session.id, session.userB, true);
+    const service = new ConnectVideoTokenService(
+      sessions,
+      new FakeSfuProvider(),
+      new SessionVideoConsentVerifier(sessions),
+      enabledFlags(),
+      () => now,
+      () => false,
+    );
+
+    await expect(service.issueForParticipant(session.userA, session.id)).rejects.toMatchObject({
+      response: { code: 'SERVICE_UNAVAILABLE' },
+    } satisfies Partial<ServiceUnavailableException>);
+  });
+
   it('signs a LiveKit participant token with room-scoped publish/subscribe grants', async () => {
     const provider = new LiveKitSfuProvider('test-api-key', 's'.repeat(40), 'wss://sfu.test');
     const issued = await provider.issueParticipantToken({
@@ -181,5 +206,93 @@ describe('Connect video token service (P3-01)', () => {
         request,
       ),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+});
+
+describe('Connect video frame moderation (P3-03)', () => {
+  it('does not persist or end a session for a low-confidence result', async () => {
+    const sessions = new MemoryConnectSessionStore();
+    const session = sessionRecord();
+    session.videoConsent = { userA: true, userB: true };
+    sessions.sessions.set(session.id, session);
+    const moderation = new MemoryConnectVideoModerationStore();
+    const connect = { endSession: vi.fn() };
+    const service = new ConnectVideoModerationService(
+      sessions,
+      new FakeConnectVideoFrameClassifier(),
+      moderation,
+      connect as never,
+      enabledFlags(),
+      () => now,
+    );
+
+    await expect(
+      service.inspectFrame(
+        session.userA,
+        session.id,
+        Buffer.from('__FLAG_LOW__').toString('base64'),
+      ),
+    ).resolves.toEqual({ flagged: false, ended: false });
+    expect(moderation.flags).toHaveLength(0);
+    expect(connect.endSession).not.toHaveBeenCalled();
+  });
+
+  it('flags the participant and ends both sides for a high-confidence result', async () => {
+    const sessions = new MemoryConnectSessionStore();
+    const session = sessionRecord();
+    session.videoConsent = { userA: true, userB: true };
+    sessions.sessions.set(session.id, session);
+    const moderation = new MemoryConnectVideoModerationStore();
+    const connect = { endSession: vi.fn().mockResolvedValue(session.userB) };
+    const service = new ConnectVideoModerationService(
+      sessions,
+      new FakeConnectVideoFrameClassifier(),
+      moderation,
+      connect as never,
+      enabledFlags(),
+      () => now,
+    );
+
+    await expect(
+      service.inspectFrame(
+        session.userA,
+        session.id,
+        Buffer.from('__FLAG_HIGH__').toString('base64'),
+      ),
+    ).resolves.toMatchObject({ flagged: true, ended: true, partnerUserId: session.userB });
+    expect(moderation.flags).toMatchObject([
+      {
+        sessionId: session.id,
+        userId: session.userA,
+        category: 'explicit',
+        confidence: 0.99,
+        classifierVersion: 'fake-v1',
+        createdAt: now,
+      },
+    ]);
+    expect(connect.endSession).toHaveBeenCalledWith(session.userA, session.id, 'leave');
+  });
+
+  it('ends the call if the classifier fails and does not create a false account flag', async () => {
+    const sessions = new MemoryConnectSessionStore();
+    const session = sessionRecord();
+    session.videoConsent = { userA: true, userB: true };
+    sessions.sessions.set(session.id, session);
+    const moderation = new MemoryConnectVideoModerationStore();
+    const connect = { endSession: vi.fn().mockResolvedValue(session.userB) };
+    const service = new ConnectVideoModerationService(
+      sessions,
+      { classifyFrame: vi.fn().mockRejectedValue(new Error('classifier offline')) },
+      moderation,
+      connect as never,
+      enabledFlags(),
+      () => now,
+    );
+
+    await expect(
+      service.inspectFrame(session.userA, session.id, Buffer.from('sample').toString('base64')),
+    ).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+    expect(connect.endSession).toHaveBeenCalledWith(session.userA, session.id, 'leave');
+    expect(moderation.flags).toHaveLength(0);
   });
 });
