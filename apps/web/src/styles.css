@@ -239,3 +239,29 @@
     scroll-behavior: auto;
   }
 }
+
+.safety-sheet {
+  width: min(calc(100% - 2rem), 32rem);
+  max-height: min(90dvh, 48rem);
+  overflow-y: auto;
+  margin: auto;
+  padding: clamp(1.25rem, 5vw, 2rem);
+  border: 1px solid var(--posha-border);
+  border-radius: 24px;
+  color: var(--posha-text);
+  background: var(--posha-surface);
+  box-shadow: 0 16px 48px -16px rgb(63 11 27 / 35%);
+}
+.safety-sheet form {
+  display: grid;
+  gap: 1rem;
+}
+.safety-sheet h2,
+.safety-sheet p {
+  margin: 0;
+}
+.safety-sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}

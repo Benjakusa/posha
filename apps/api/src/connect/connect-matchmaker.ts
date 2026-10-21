@@ -37,7 +37,10 @@ export interface ConnectMatchEvents {
     userId: string,
     payload: { sessionId: string; partner: { alias: string }; mode: 'text' },
   ): Promise<void>;
-  sessionEnded(userId: string, payload: { sessionId: string; reason: 'timeout' }): Promise<void>;
+  sessionEnded(
+    userId: string,
+    payload: { sessionId: string; reason: 'timeout' | 'block' },
+  ): Promise<void>;
 }
 
 export const CHAT_ALIAS_RESOLVER = Symbol('CHAT_ALIAS_RESOLVER');
@@ -111,7 +114,7 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
   async endSession(
     userId: string,
     sessionId: string,
-    reason: 'next' | 'leave',
+    reason: 'next' | 'leave' | 'block',
   ): Promise<string | null> {
     const ownContext = await this.matching.getActiveContext(userId, sessionId);
     const partnerUserId = await this.sessions.end(sessionId, userId, reason, this.now());
@@ -120,6 +123,12 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
       this.matching.clearActive(userId, sessionId),
       this.matching.clearActive(partnerUserId, sessionId),
     ]);
+    if (reason === 'block') {
+      await Promise.all([
+        this.events.sessionEnded(userId, { sessionId, reason: 'block' }),
+        this.events.sessionEnded(partnerUserId, { sessionId, reason: 'block' }),
+      ]);
+    }
     if (reason === 'next') {
       await this.skips.record(userId, partnerUserId);
       if (ownContext && (await this.presence.isOnline(userId))) {

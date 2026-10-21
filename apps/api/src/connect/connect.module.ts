@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
+import type { Pool } from 'pg';
 import type { AuthStore } from '../auth/auth-store.js';
 import { AUTH_STORE } from '../auth/auth-store.js';
 import { AuthService } from '../auth/auth.service.js';
@@ -15,6 +16,8 @@ import { CONNECT_SESSION_STORE } from './connect-session.store.js';
 import type { ConnectSessionStore } from './connect-session.store.js';
 import { USERS_STORE } from '../users/users-store.js';
 import type { UsersStore } from '../users/users-store.js';
+import type { OwnershipResolver } from '../policies/policy.guards.js';
+import { PolicyModule } from '../policies/policy.module.js';
 import { CONNECT_MATCH_EVENTS, ConnectSocketMatchEvents } from './connect-match-events.js';
 import { CHAT_ALIAS_RESOLVER } from './connect-matchmaker.js';
 import type { ChatAliasResolver } from './connect-matchmaker.js';
@@ -33,10 +36,16 @@ import type {
 } from './connect-message.service.js';
 import { ConnectMessageService } from './connect-message.service.js';
 import { ConnectGateway } from './connect.gateway.js';
+import { ConnectSafetyController } from './connect-safety.controller.js';
+import { ConnectSafetyService } from './connect-safety.service.js';
 import { CONNECT_CHAT_ABUSE_STORE } from './connect-chat-abuse.store.js';
 import type { ConnectChatAbuseStore } from './connect-chat-abuse.store.js';
 
+const CONNECT_POOL = Symbol('CONNECT_POOL');
+
 export interface ConnectModuleOptions {
+  pool: Pool;
+  ownershipResolver: OwnershipResolver;
   authService: AuthService;
   authStore: AuthStore;
   featureFlags: FeatureFlagsService;
@@ -58,6 +67,16 @@ export class ConnectModule {
   static register(options: ConnectModuleOptions): DynamicModule {
     return {
       module: ConnectModule,
+      imports: [
+        PolicyModule.register({
+          authService: options.authService,
+          authStore: options.authStore,
+          featureFlags: options.featureFlags,
+          rateLimitStore: options.rateLimitStore,
+          ownershipResolver: options.ownershipResolver,
+        }),
+      ],
+      controllers: [ConnectSafetyController],
       providers: [
         { provide: AuthService, useValue: options.authService },
         { provide: AUTH_STORE, useValue: options.authStore },
@@ -73,6 +92,26 @@ export class ConnectModule {
         { provide: CONNECT_MESSAGE_CIPHER, useValue: options.messageCipher },
         { provide: CONNECT_MODERATION_PROVIDER, useValue: options.moderationProvider },
         { provide: CONNECT_CHAT_ABUSE_STORE, useValue: options.chatAbuseStore },
+        {
+          provide: ConnectSafetyService,
+          useFactory: (
+            pool: Pool,
+            sessions: ConnectSessionStore,
+            messages: ConnectMessageStore,
+            cipher: ConnectMessageCipher,
+            users: UsersStore,
+            matchmaker: ConnectMatchmaker,
+          ) => new ConnectSafetyService(pool, sessions, messages, cipher, users, matchmaker),
+          inject: [
+            CONNECT_POOL,
+            CONNECT_SESSION_STORE,
+            CONNECT_MESSAGE_STORE,
+            CONNECT_MESSAGE_CIPHER,
+            USERS_STORE,
+            ConnectMatchmaker,
+          ],
+        },
+        { provide: CONNECT_POOL, useValue: options.pool },
         {
           provide: ConnectMessageService,
           useFactory: (

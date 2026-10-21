@@ -20,7 +20,7 @@ export class ConnectSocketMatchEvents implements ConnectMatchEvents {
 
   async sessionEnded(
     userId: string,
-    payload: { sessionId: string; reason: 'timeout' },
+    payload: { sessionId: string; reason: 'timeout' | 'block' },
   ): Promise<void> {
     if (!this.namespace) throw new Error('CONNECT_NAMESPACE_NOT_READY');
     this.namespace.to(userId).emit('session.ended', payload);

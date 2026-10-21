@@ -14,8 +14,8 @@ Base: `/api/v1`. JSON. Auth: `Authorization: Bearer <access JWT>` (15 min) + ref
 `POST /creators/apply` · `POST /creators/kyc/start` · `POST /creators/kyc/webhook` · `GET /creators/me`
 
 ## 3. Connect
-REST: `GET /connect/prefs` `PUT /connect/prefs` `GET /connect/interests` `POST /blocks` `DELETE /blocks/:userId` `GET /blocks`
-Reports: `POST /reports {targetType,targetId,reasonCode,details,sessionId?}`
+REST: `GET /connect/prefs` `PUT /connect/prefs` `GET /connect/interests` `POST /blocks` `DELETE /blocks/:userId` `GET /blocks` `POST /connect/sessions/:sessionId/block` (partner resolved server-side)
+Reports: `POST /reports {sessionId,reasonCode,details?,snapshotConsent}` with required `Idempotency-Key`; snapshot messages are captured only when the reporter explicitly consents.
 **WS namespace `/connect`** uses Socket.IO with the access token in handshake auth. The gateway rejects inactive or below-L2 accounts before messages are handled and caps packets at 8 KB.
 - Client→server: `heartbeat {}` `queue.join {mode:'text'|'video', interests[], lang, countryPref?}` `queue.leave {}`
 - `chat.send {sessionId, body ≤ 1000, clientMsgId}` `chat.typing {sessionId}` `session.next {sessionId}` `session.leave {sessionId}`

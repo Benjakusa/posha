@@ -33,7 +33,7 @@ PostgreSQL 15+, migrations via a versioned tool (Prisma Migrate, Drizzle or Knex
 **ledger_entries**: txn_id, account_id, direction (debit|credit), amount_minor, currency, ref_type, ref_id, memo, created_at. **Append-only (DB trigger blocks UPDATE/DELETE).**
 **ledger_txns**: id, kind, idempotency_key (unique), posted_at; invariant: sum(debits)=sum(credits) per txn.
 **payouts**: creator_id, amount_minor, currency, status, provider_ref, requested_at, approved_by, paid_at, failure_reason.
-**reports**: reporter_id, target_type, target_id, reason_code, details_ciphertext, consented snapshot_ciphertext (maximum 50 messages), evidence_ref, status, assigned_to.
+**reports**: reporter_id, target_type, target_id, reason_code, details_ciphertext, consented snapshot_ciphertext (maximum 50 messages), snapshot_consent, idempotency_key (unique per reporter), evidence_ref, status, assigned_to.
 **moderation_actions**: report_id?, target_user_id, action (warn, mute, suspend, ban, remove_content), reason_ciphertext, by_staff_id, expires_at.
 **appeals**: action_id, user_id, text, status, decided_by.
 **audit_log**: actor_id, actor_role, action, entity_type, entity_id, reason (required for sensitive), ip_hash, prev_hash, hash, created_at (append-only, hash-chained).

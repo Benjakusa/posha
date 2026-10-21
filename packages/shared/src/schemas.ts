@@ -51,6 +51,9 @@ export const ErrorCodeSchema = z.enum([
   ErrorCodes.GATE_DISABLED,
   ErrorCodes.SESSION_NOT_FOUND,
   ErrorCodes.SERVICE_UNAVAILABLE,
+  ErrorCodes.CONTENT_BLOCKED,
+  ErrorCodes.SAFETY_ESCALATED,
+  ErrorCodes.TEMPORARILY_MUTED,
   ErrorCodes.HTTP_ERROR,
   ErrorCodes.INTERNAL_SERVER_ERROR,
 ]);
@@ -154,5 +157,20 @@ export const ConnectChatSendSchema = z
   .strict();
 export const ConnectChatTypingSchema = z.object({ sessionId: z.string().uuid() }).strict();
 export const ConnectSessionSchema = z.object({ sessionId: z.string().uuid() }).strict();
+export const ConnectReportSchema = z
+  .object({
+    sessionId: z.string().uuid(),
+    reasonCode: z.enum([
+      'harassment',
+      'threats',
+      'solicitation',
+      'explicit_content',
+      'spam',
+      'other',
+    ]),
+    details: z.string().trim().max(2000).optional(),
+    snapshotConsent: z.boolean().default(false),
+  })
+  .strict();
 
 export const BlockUserSchema = z.object({ userId: z.string().uuid() }).strict();

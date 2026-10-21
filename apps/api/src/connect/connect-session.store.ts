@@ -21,6 +21,7 @@ export interface ConnectSessionStore {
   ): Promise<string | null>;
   listActive(): Promise<readonly ConnectSessionRecord[]>;
   findActiveForUser(userId: string): Promise<ConnectSessionRecord | null>;
+  findById(sessionId: string): Promise<ConnectSessionRecord | null>;
 }
 
 export const CONNECT_SESSION_STORE = Symbol('CONNECT_SESSION_STORE');
@@ -54,6 +55,10 @@ export class MemoryConnectSessionStore implements ConnectSessionStore {
 
   async listActive(): Promise<readonly ConnectSessionRecord[]> {
     return [...this.sessions.values()].filter((session) => session.endedAt === null);
+  }
+
+  async findById(sessionId: string): Promise<ConnectSessionRecord | null> {
+    return this.sessions.get(sessionId) ?? null;
   }
 
   async findActiveForUser(userId: string): Promise<ConnectSessionRecord | null> {
@@ -126,6 +131,15 @@ export class PostgresConnectSessionStore implements ConnectSessionStore {
        FROM connect_sessions WHERE ended_at IS NULL`,
     );
     return result.rows.map(mapSession);
+  }
+
+  async findById(sessionId: string): Promise<ConnectSessionRecord | null> {
+    const result = await this.pool.query<SessionRow>(
+      `SELECT id, user_a, user_b, mode, started_at, ended_at, end_reason, ended_by
+       FROM connect_sessions WHERE id = $1`,
+      [sessionId],
+    );
+    return result.rows[0] ? mapSession(result.rows[0]) : null;
   }
 
   async findActiveForUser(userId: string): Promise<ConnectSessionRecord | null> {

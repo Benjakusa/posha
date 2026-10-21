@@ -29,6 +29,10 @@ const connectSafetyMigrationPath = new URL(
   '../../../infra/db/migrations/008_connect_safety.sql',
   import.meta.url,
 );
+const connectReportMigrationPath = new URL(
+  '../../../infra/db/migrations/010_connect_reports_idempotency.sql',
+  import.meta.url,
+);
 const connectMessageControlsMigrationPath = new URL(
   '../../../infra/db/migrations/009_connect_message_controls.sql',
   import.meta.url,
@@ -148,5 +152,15 @@ describe('Connect message controls migration', () => {
     expect(up).not.toMatch(/(body|message_text|content)\s+text\b/i);
     expect(down).toContain('DROP TABLE connect_moderation_flags');
     expect(down).toContain('DROP COLUMN client_msg_id');
+  });
+});
+
+describe('Connect report migration', () => {
+  it('[P2-05] adds reporter-scoped idempotency and clean rollback', async () => {
+    const migration = await readFile(connectReportMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('reports_reporter_idempotency_uidx');
+    expect(up).toContain('ALTER COLUMN idempotency_key SET NOT NULL');
+    expect(down).toContain('DROP COLUMN idempotency_key');
   });
 });

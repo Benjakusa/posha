@@ -22,7 +22,11 @@ export interface ConnectRealtimePort {
   leaveQueue(userId: string): Promise<void>;
   sendMessage(userId: string, input: ConnectChatSend): Promise<RelayedMessage>;
   typing(userId: string, sessionId: string): Promise<string>;
-  endSession(userId: string, sessionId: string, reason: 'next' | 'leave'): Promise<string | null>;
+  endSession(
+    userId: string,
+    sessionId: string,
+    reason: 'next' | 'leave' | 'block',
+  ): Promise<string | null>;
 }
 
 export const CONNECT_REALTIME_PORT = Symbol('CONNECT_REALTIME_PORT');

@@ -23,6 +23,12 @@ export interface PoshaApiClient {
   updatePreferences(accessToken: string, preferences: { locale: string }): Promise<void>;
   requestDataExport(accessToken: string): Promise<void>;
   requestDeletion(accessToken: string): Promise<void>;
+  reportConnectSession(
+    accessToken: string,
+    report: { sessionId: string; reasonCode: string; details?: string; snapshotConsent: boolean },
+    idempotencyKey: string,
+  ): Promise<{ reportId: string; status: 'open' }>;
+  blockConnectSession(accessToken: string, sessionId: string): Promise<{ blocked: true }>;
 }
 
 export class ApiRequestError extends Error {
@@ -77,6 +83,33 @@ export class HttpPoshaApiClient implements PoshaApiClient {
 
   async requestDeletion(accessToken: string): Promise<void> {
     await this.request('/me', { method: 'DELETE' }, accessToken);
+  }
+
+  reportConnectSession(
+    accessToken: string,
+    report: { sessionId: string; reasonCode: string; details?: string; snapshotConsent: boolean },
+    idempotencyKey: string,
+  ): Promise<{ reportId: string; status: 'open' }> {
+    return this.request(
+      '/reports',
+      {
+        method: 'POST',
+        headers: { 'idempotency-key': idempotencyKey },
+        body: JSON.stringify(report),
+      },
+      accessToken,
+    );
+  }
+
+  blockConnectSession(accessToken: string, sessionId: string): Promise<{ blocked: true }> {
+    return this.request(
+      `/connect/sessions/${encodeURIComponent(sessionId)}/block`,
+      {
+        method: 'POST',
+        body: JSON.stringify({}),
+      },
+      accessToken,
+    );
   }
 
   private async request<T = void>(

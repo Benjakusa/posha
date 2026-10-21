@@ -43,3 +43,5 @@ export { ProblemDetailsExceptionFilter, toProblemDetails } from './problem-detai
 export * from './connect/connect-message.service.js';
 export * from './connect/connect-retention.worker.js';
 export * from './connect/connect-chat-abuse.store.js';
+export * from './connect/connect-safety.controller.js';
+export * from './connect/connect-safety.service.js';

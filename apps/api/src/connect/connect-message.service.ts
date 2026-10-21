@@ -35,6 +35,10 @@ export interface ConnectMessageStore {
     severity: 'review' | 'urgent';
     createdAt: Date;
   }): Promise<boolean>;
+  listRecent(
+    sessionId: string,
+    limit: number,
+  ): Promise<{ senderId: string; ciphertext: Buffer; createdAt: Date }[]>;
   deleteExpired(now: Date, limit: number): Promise<number>;
 }
 export const CONNECT_MESSAGE_STORE = Symbol('CONNECT_MESSAGE_STORE');
@@ -119,6 +123,22 @@ export class PostgresConnectMessageStore implements ConnectMessageStore {
       flagged: row.moderation_flag,
       expiresAt: row.expires_at,
     };
+  }
+  async listRecent(sessionId: string, limit: number) {
+    const result = await this.pool.query<{
+      sender_id: string;
+      body_ciphertext: Buffer;
+      created_at: Date;
+    }>(
+      `SELECT sender_id, body_ciphertext, created_at FROM connect_messages
+       WHERE session_id=$1 AND expires_at > now() ORDER BY created_at DESC, id DESC LIMIT $2`,
+      [sessionId, limit],
+    );
+    return result.rows.map((row) => ({
+      senderId: row.sender_id,
+      ciphertext: row.body_ciphertext,
+      createdAt: row.created_at,
+    }));
   }
   async findActiveSession(sessionId: string): Promise<ConnectSessionRecord | null> {
     const result = await this.pool.query<{
@@ -231,6 +251,18 @@ export class MemoryConnectMessageStore implements ConnectMessageStore {
       ).length >= 3;
     if (escalate) input.severity = 'urgent';
     return escalate;
+  }
+  async listRecent(sessionId: string, limit: number) {
+    return [...this.messages.values()]
+      .reverse()
+      .filter((message) => message.sessionId === sessionId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit)
+      .map((message) => ({
+        senderId: message.senderId,
+        ciphertext: message.ciphertext,
+        createdAt: message.createdAt,
+      }));
   }
   async deleteExpired(now: Date, limit: number): Promise<number> {
     let deleted = 0;

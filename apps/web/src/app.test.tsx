@@ -24,6 +24,8 @@ function fakeApi(overrides: Partial<PoshaApiClient> = {}): PoshaApiClient {
     updatePreferences: vi.fn().mockResolvedValue(undefined),
     requestDataExport: vi.fn().mockResolvedValue(undefined),
     requestDeletion: vi.fn().mockResolvedValue(undefined),
+    reportConnectSession: vi.fn().mockResolvedValue({ reportId: 'report-id', status: 'open' }),
+    blockConnectSession: vi.fn().mockResolvedValue({ blocked: true }),
     ...overrides,
   };
 }

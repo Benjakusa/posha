@@ -63,3 +63,7 @@ Text queues are Redis sorted sets partitioned by mode and language. A Redis Lua 
 ## Connect chat message handling (P2-04)
 
 Chat text is classified before relay and never written to logs. Allowed messages use AES-256-GCM field encryption with an injected 32-byte application key, and PostgreSQL stores only ciphertext with a seven-day expiry. Moderation records contain category/severity metadata and message references, not plaintext. Client message IDs are unique per sender for retry safety. An injected moderation provider keeps production classifiers replaceable; the deterministic keyword provider is for local development/tests. Three explicit-content flags within 24 hours escalate to urgent review.
+
+## Connect reports and chat blocking (P2-05)
+
+A chat report targets the session, resolves participant membership server-side, and stores details and any consented last-50-message snapshot with application encryption. Snapshot consent defaults to false and the UI checkbox starts unchecked. The idempotency key is scoped to the reporting user. Chat block actions address the session rather than exposing the partner's user ID; the server resolves the partner, persists the block, removes the initiator from queue, and ends a matching active session.
