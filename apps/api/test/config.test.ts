@@ -16,4 +16,13 @@ describe('API configuration', () => {
       'Invalid API configuration keys: PORT',
     );
   });
+
+  it('[P2-08] rejects weak metrics scrape credentials', () => {
+    expect(() => validateApiConfig({ METRICS_BEARER_TOKEN: 'short' })).toThrow(
+      'Invalid API configuration keys: METRICS_BEARER_TOKEN',
+    );
+    expect(validateApiConfig({ METRICS_BEARER_TOKEN: 'a'.repeat(32) }).METRICS_BEARER_TOKEN).toBe(
+      'a'.repeat(32),
+    );
+  });
 });

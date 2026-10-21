@@ -15,6 +15,7 @@ import type { ConnectSessionRecord, ConnectSessionStore } from './connect-sessio
 import type { MatchingStore, QueueEntry, RecentSkipStore } from './matching-store.js';
 import type { UsersStore } from '../users/users-store.js';
 import type { ConnectMessageService } from './connect-message.service.js';
+import type { ConnectObservabilityService } from './connect-observability.service.js';
 
 export interface ChatAliasResolver {
   getChatAlias(userId: string): Promise<string | null>;
@@ -63,6 +64,7 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
     private readonly now: () => Date = () => new Date(),
     private readonly makeId: (date: Date) => string = generateUuidV7,
     private readonly messages?: ConnectMessageService,
+    private readonly metrics?: ConnectObservabilityService,
   ) {}
 
   async joinQueue(userId: string, input: ConnectQueueJoin): Promise<QueueState> {
@@ -86,6 +88,7 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
       }
       throw error;
     }
+    await this.refreshQueueDepth();
     const position = await this.matching.queuePosition(userId);
     return {
       position,
@@ -95,6 +98,7 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
 
   async leaveQueue(userId: string): Promise<void> {
     await this.matching.removeFromQueue(userId);
+    await this.refreshQueueDepth();
   }
 
   async sendMessage(userId: string, input: ConnectChatSend) {
@@ -210,6 +214,10 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
             throw error;
           }
           matchCount += 1;
+          this.metrics?.recordMatch([
+            Math.max(0, this.now().getTime() - first.enqueuedAt),
+            Math.max(0, this.now().getTime() - second.enqueuedAt),
+          ]);
           await Promise.all([
             this.events.matchFound(first.userId, {
               sessionId,
@@ -227,7 +235,17 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
       await this.closeOrphanedSessions();
       return matchCount;
     } finally {
+      await this.refreshQueueDepth();
       await this.matching.releaseWorkerLock(owner).catch(() => undefined);
+    }
+  }
+
+  private async refreshQueueDepth(): Promise<void> {
+    if (!this.metrics) return;
+    try {
+      this.metrics.setQueueDepth(await this.matching.queueDepth());
+    } catch {
+      // Metrics collection must not interfere with matchmaking availability.
     }
   }
 

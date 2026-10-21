@@ -20,6 +20,7 @@ export interface MatchingStore {
   removeFromQueue(userId: string): Promise<void>;
   listLanes(): Promise<readonly string[]>;
   listLane(lane: string, limit: number): Promise<readonly QueueEntry[]>;
+  queueDepth(): Promise<number>;
   queuePosition(userId: string): Promise<number | null>;
   claimPair(first: QueueEntry, second: QueueEntry, claimId: string): Promise<ClaimedPair | null>;
   finalizePair(pair: ClaimedPair, sessionId: string): Promise<void>;
@@ -75,6 +76,12 @@ export class MemoryMatchingStore implements MatchingStore {
       .sort((a, b) => a.enqueuedAt - b.enqueuedAt)
       .slice(0, limit)
       .map((entry) => ({ ...entry, interests: [...entry.interests] }));
+  }
+
+  async queueDepth(): Promise<number> {
+    let depth = 0;
+    for (const queue of this.queues.values()) depth += queue.size;
+    return depth;
   }
 
   async queuePosition(userId: string): Promise<number | null> {
@@ -278,6 +285,13 @@ export class RedisMatchingStore implements MatchingStore {
         return [];
       }
     });
+  }
+
+  async queueDepth(): Promise<number> {
+    let depth = 0;
+    for (const lane of await this.listLanes())
+      depth += await this.client.zCard(this.key('queue:' + lane));
+    return depth;
   }
 
   async queuePosition(userId: string): Promise<number | null> {

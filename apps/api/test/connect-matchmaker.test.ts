@@ -6,6 +6,7 @@ import type { ConnectRealtimeError } from '../src/connect/connect-realtime.port.
 import { MemoryConnectPresenceStore } from '../src/connect/connect-presence.store.js';
 import { MemoryConnectSessionStore } from '../src/connect/connect-session.store.js';
 import { MemoryMatchingStore, MemoryRecentSkipStore } from '../src/connect/matching-store.js';
+import { ConnectObservabilityService } from '../src/connect/connect-observability.service.js';
 import type { UsersStore } from '../src/users/users-store.js';
 
 const NOW = new Date('2026-10-20T12:00:00.000Z');
@@ -47,6 +48,7 @@ function harness(options: { blocked?: readonly string[][]; now?: () => Date } = 
     }),
   };
   const aliases = { getChatAlias: vi.fn(async (userId: string) => 'Alias' + userId) };
+  const metrics = new ConnectObservabilityService();
   const matchmaker = new ConnectMatchmaker(
     matching,
     skips,
@@ -58,8 +60,10 @@ function harness(options: { blocked?: readonly string[][]; now?: () => Date } = 
     events,
     now,
     makeId,
+    undefined,
+    metrics,
   );
-  return { matchmaker, matching, skips, presence, sessions, users, auth, events };
+  return { matchmaker, matching, skips, presence, sessions, users, auth, events, metrics };
 }
 
 async function queue(h: ReturnType<typeof harness>, userId: string, interests: string[] = []) {
@@ -88,6 +92,9 @@ describe('Connect matching (P2-03)', () => {
       partner: { alias: 'Aliasb' },
       mode: 'text',
     });
+    expect(h.metrics.renderPrometheus()).toContain('posha_connect_queue_depth 1');
+    expect(h.metrics.renderPrometheus()).toContain('posha_connect_sessions_started_total 1');
+    expect(h.metrics.renderPrometheus()).toContain('posha_connect_match_wait_seconds_count 2');
   });
 
   it('never matches blocked or recently skipped pairs in either direction', async () => {

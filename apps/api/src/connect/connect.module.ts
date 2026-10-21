@@ -38,6 +38,9 @@ import { ConnectMessageService } from './connect-message.service.js';
 import { ConnectGateway } from './connect.gateway.js';
 import { ConnectSafetyController } from './connect-safety.controller.js';
 import { ConnectSafetyService } from './connect-safety.service.js';
+import { ConnectMetricsController } from './connect-metrics.controller.js';
+import { ConnectObservabilityService } from './connect-observability.service.js';
+import { ConnectMetricsGuard } from './connect-metrics.guard.js';
 import { CONNECT_CHAT_ABUSE_STORE } from './connect-chat-abuse.store.js';
 import type { ConnectChatAbuseStore } from './connect-chat-abuse.store.js';
 
@@ -76,7 +79,7 @@ export class ConnectModule {
           ownershipResolver: options.ownershipResolver,
         }),
       ],
-      controllers: [ConnectSafetyController],
+      controllers: [ConnectSafetyController, ConnectMetricsController],
       providers: [
         { provide: AuthService, useValue: options.authService },
         { provide: AUTH_STORE, useValue: options.authStore },
@@ -92,6 +95,8 @@ export class ConnectModule {
         { provide: CONNECT_MESSAGE_CIPHER, useValue: options.messageCipher },
         { provide: CONNECT_MODERATION_PROVIDER, useValue: options.moderationProvider },
         { provide: CONNECT_CHAT_ABUSE_STORE, useValue: options.chatAbuseStore },
+        ConnectObservabilityService,
+        ConnectMetricsGuard,
         {
           provide: ConnectSafetyService,
           useFactory: (
@@ -101,7 +106,19 @@ export class ConnectModule {
             cipher: ConnectMessageCipher,
             users: UsersStore,
             matchmaker: ConnectMatchmaker,
-          ) => new ConnectSafetyService(pool, sessions, messages, cipher, users, matchmaker),
+            metrics: ConnectObservabilityService,
+          ) =>
+            new ConnectSafetyService(
+              pool,
+              sessions,
+              messages,
+              cipher,
+              users,
+              matchmaker,
+              undefined,
+              undefined,
+              metrics,
+            ),
           inject: [
             CONNECT_POOL,
             CONNECT_SESSION_STORE,
@@ -109,6 +126,7 @@ export class ConnectModule {
             CONNECT_MESSAGE_CIPHER,
             USERS_STORE,
             ConnectMatchmaker,
+            ConnectObservabilityService,
           ],
         },
         { provide: CONNECT_POOL, useValue: options.pool },
@@ -135,6 +153,7 @@ export class ConnectModule {
             aliases: ChatAliasResolver,
             events: ConnectSocketMatchEvents,
             messages: ConnectMessageService,
+            metrics: ConnectObservabilityService,
           ) =>
             new ConnectMatchmaker(
               matching,
@@ -148,6 +167,7 @@ export class ConnectModule {
               undefined,
               undefined,
               messages,
+              metrics,
             ),
           inject: [
             MATCHING_STORE,
@@ -159,6 +179,7 @@ export class ConnectModule {
             CHAT_ALIAS_RESOLVER,
             CONNECT_MATCH_EVENTS,
             ConnectMessageService,
+            ConnectObservabilityService,
           ],
         },
         { provide: CONNECT_REALTIME_PORT, useExisting: ConnectMatchmaker },
@@ -174,7 +195,13 @@ export class ConnectModule {
         },
         ConnectGateway,
       ],
-      exports: [ConnectGateway, ConnectMatchmaker, ConnectMatcherWorker, ConnectRetentionWorker],
+      exports: [
+        ConnectGateway,
+        ConnectMatchmaker,
+        ConnectMatcherWorker,
+        ConnectRetentionWorker,
+        ConnectObservabilityService,
+      ],
     };
   }
 }

@@ -6,6 +6,7 @@ export const ApiConfigSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   OTEL_SERVICE_NAME: z.string().min(1).default('posha-api'),
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().url().optional(),
+  METRICS_BEARER_TOKEN: z.string().min(32).optional(),
 });
 
 export type ApiConfig = z.infer<typeof ApiConfigSchema>;

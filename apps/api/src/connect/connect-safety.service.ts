@@ -6,6 +6,7 @@ import type { UsersStore } from '../users/users-store.js';
 import type { ConnectMessageCipher, ConnectMessageStore } from './connect-message.service.js';
 import type { ConnectMatchmaker } from './connect-matchmaker.js';
 import type { ConnectSessionStore } from './connect-session.store.js';
+import type { ConnectObservabilityService } from './connect-observability.service.js';
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 
@@ -19,6 +20,7 @@ export class ConnectSafetyService {
     private readonly matchmaker: ConnectMatchmaker,
     private readonly now: () => Date = () => new Date(),
     private readonly makeId: (date: Date) => string = generateUuidV7,
+    private readonly metrics?: ConnectObservabilityService,
   ) {}
 
   async report(userId: string, rawInput: unknown, idempotencyKey: string | undefined) {
@@ -43,14 +45,14 @@ export class ConnectSafetyService {
       : null;
     const detailsCiphertext = parsed.data.details ? this.cipher.encrypt(parsed.data.details) : null;
     const reportId = this.makeId(createdAt);
-    const result = await this.pool.query<{ id: string }>(
+    const result = await this.pool.query<{ id: string; inserted?: boolean }>(
       `INSERT INTO reports
        (id, reporter_id, target_type, target_id, session_id, reason_code, details_ciphertext,
         snapshot_ciphertext, snapshot_consent, status, idempotency_key, created_at, updated_at)
        VALUES ($1,$2,'session',$3,$3,$4,$5,$6,$7,'open',$8,$9,$9)
        ON CONFLICT (reporter_id, idempotency_key) DO UPDATE
          SET idempotency_key=EXCLUDED.idempotency_key
-       RETURNING id`,
+       RETURNING id, (xmax = 0) AS inserted`,
       [
         reportId,
         userId,
@@ -63,6 +65,7 @@ export class ConnectSafetyService {
         createdAt,
       ],
     );
+    if (result.rows[0]?.inserted !== false) this.metrics?.recordReport();
     return { reportId: result.rows[0]!.id, status: 'open' as const };
   }
 

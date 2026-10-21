@@ -10,6 +10,7 @@ import {
 } from '../src/connect/connect-message.service.js';
 import { ConnectSafetyService } from '../src/connect/connect-safety.service.js';
 import { MemoryConnectSessionStore } from '../src/connect/connect-session.store.js';
+import { ConnectObservabilityService } from '../src/connect/connect-observability.service.js';
 
 function harness() {
   const now = new Date('2026-10-21T12:00:00Z');
@@ -41,6 +42,7 @@ function harness() {
     endSession: vi.fn(async () => session.userB),
     leaveQueue: vi.fn(async () => undefined),
   } as never;
+  const metrics = new ConnectObservabilityService();
   const service = new ConnectSafetyService(
     pool,
     sessions,
@@ -50,6 +52,7 @@ function harness() {
     matchmaker,
     () => now,
     () => randomUUID(),
+    metrics,
   );
   return {
     now,
@@ -62,6 +65,7 @@ function harness() {
     query,
     users,
     matchmaker,
+    metrics,
     service,
   };
 }
@@ -151,5 +155,22 @@ describe('Connect reports and session blocks (P2-05)', () => {
     );
     expect(h.matchmaker.leaveQueue).toHaveBeenCalledWith(h.session.userA);
     expect(h.matchmaker.endSession).toHaveBeenCalledWith(h.session.userA, h.session.id, 'block');
+  });
+
+  it('counts only newly created reports, not idempotent retries', async () => {
+    const h = harness();
+    h.query.mockResolvedValueOnce({ rows: [{ id: 'report-id', inserted: true }] });
+    await h.service.report(
+      h.session.userA,
+      { sessionId: h.session.id, reasonCode: 'other' },
+      'report-key-new1',
+    );
+    h.query.mockResolvedValueOnce({ rows: [{ id: 'report-id', inserted: false }] });
+    await h.service.report(
+      h.session.userA,
+      { sessionId: h.session.id, reasonCode: 'other' },
+      'report-key-new1',
+    );
+    expect(h.metrics.renderPrometheus()).toContain('posha_connect_reports_total 1');
   });
 });

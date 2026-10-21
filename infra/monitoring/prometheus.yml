@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: posha-api
+    # The API service must be reachable only on the private monitoring network.
+    metrics_path: /api/v1/metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/metrics-bearer-token
+    static_configs:
+      - targets: ['api:3000']
