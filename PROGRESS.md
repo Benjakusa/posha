@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-21 by Codex
 Current phase: Phase 2
-Current task: P2-07
-Next task: P2-08
+Current task: P2-08
+Next task: P2-09
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -41,11 +41,13 @@ Next task: P2-08
 | P2-04 | Done | 2026-10-21 | `a830f4b` | Message, gateway, matchmaking, and migration tests pass (30 focused tests); API tests excluding the localhost liveness test: 80 passed, 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Workspace build, lint, typecheck, format, seed, contrast, and spec-coverage checks pass. Full suite liveness test is sandbox-blocked (`listen EPERM` on 127.0.0.1). | Added encrypted chat relay, idempotent persistence, moderation provider/flag queue, repeated-flag escalation, Redis flood mute, and bounded seven-day retention worker. |
 | P2-05 | Done | 2026-10-21 | `d27784d` | Report/block service tests (4), migration contract test, sheet tests (2 incl. axe); API/web suites, workspace lint/typecheck/build/format, seed, contrast, spec-coverage pass. PostgreSQL migration integration not run because `TEST_DATABASE_URL` is unset. | Added L2-guarded reports with reporter-scoped idempotency and encrypted, explicitly consented latest-50 snapshots; session-scoped block without partner ID exposure; accessible report/block sheets. |
 | P2-06 | Done | 2026-10-21 | `424e22b` | Connect UI journey (2 tests incl. axe); full API tests excluding sandbox-blocked liveness: 85 passed, 9 PostgreSQL integration tests skipped; web suite (9 passed); workspace lint/typecheck/build/format, seed, contrast, and spec-coverage pass. | Added authenticated Socket.IO text queue/chat UI, match alias display, messaging, Next/Leave, report/block sheets, queue/error/empty states, and race-safe Next handling. Video remains unavailable. |
+| P2-07 | Blocked-External | 2026-10-21 | `7cf531f` | Admin tests (8 incl. RBAC, urgent-first queue, action reason/expiry, second-reviewer rule); migration contract test (10); lint, typecheck, build, format, seed, contrast, and spec-coverage pass. Full suite: 89 API tests and all other suites pass; one API liveness test cannot bind localhost in this sandbox; 9 PostgreSQL tests skipped. | Added moderator reports/appeals UI, role-based read-only access, reason and expiry inputs, independent review prompt for permanent-ban appeals, idempotency-ready adapters, and reversible appeal/action-revocation schema. Live queue, action persistence, appeals, and action audit await the staff SSO/server-admin dependency tracked under P1-08. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
 | P1-02 | OTP email/SMS delivery provider selection and credentials | 2026-10-20 |
 | P1-08 | Staff SSO provider selection and server endpoints for staff session, audit, and gate administration | 2026-10-20 |
+| P2-07 | Staff SSO provider and authorized server endpoints for moderation queue, actions, appeals, and audit | 2026-10-21 |
 | P1-09 | Email, SMS, and push delivery provider selection and credentials | 2026-10-20 |
 |---|---|---|
 
