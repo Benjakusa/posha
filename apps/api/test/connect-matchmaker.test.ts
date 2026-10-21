@@ -197,6 +197,22 @@ describe('Connect matching (P2-03)', () => {
     expect(h.sessions.sessions.size).toBe(250);
   });
 
+  it('[P2-09] drains 1,000 simulated users in bounded matching batches without duplicates', async () => {
+    const h = harness();
+    await Promise.all(
+      Array.from({ length: 1000 }, (_, index) => queue(h, 'load-user-' + index, ['general'])),
+    );
+    let matchCount = 0;
+    for (let i = 0; i < 10; i += 1) matchCount += await h.matchmaker.tick();
+    const matched = [...h.sessions.sessions.values()].flatMap((session) => [
+      session.userA,
+      session.userB,
+    ]);
+    expect(matchCount).toBe(500);
+    expect(new Set(matched).size).toBe(1000);
+    expect(h.metrics.renderPrometheus()).toContain('posha_connect_queue_depth 0');
+  });
+
   it('requeues the initiator after Next and excludes the prior partner for 24 hours', async () => {
     const h = harness();
     await queue(h, 'first');
