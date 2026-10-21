@@ -67,3 +67,7 @@ Chat text is classified before relay and never written to logs. Allowed messages
 ## Connect reports and chat blocking (P2-05)
 
 A chat report targets the session, resolves participant membership server-side, and stores details and any consented last-50-message snapshot with application encryption. Snapshot consent defaults to false and the UI checkbox starts unchecked. The idempotency key is scoped to the reporting user. Chat block actions address the session rather than exposing the partner's user ID; the server resolves the partner, persists the block, removes the initiator from queue, and ends a matching active session.
+
+## Connect member UI behavior (P2-06)
+
+The member flow uses the `/connect` Socket.IO namespace with the short-lived access token in handshake auth, and sends only text-mode queue requests. Video remains inaccessible while `GATE:RANDOM_VIDEO` is OFF. Queue state, match aliases, messages, safety warnings, and end events use the existing server contracts; session IDs stay private to the current client. The UI disconnects into a recoverable error state after transport loss instead of blindly reconnecting to a potentially ended session. Mobile actions remain visible in the chat header/footer, with no movement animation required.

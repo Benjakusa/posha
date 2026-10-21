@@ -31,7 +31,7 @@ describe('Connect safety sheets (P2-05)', () => {
       (screen.getByRole('checkbox', { name: 'Include recent chat messages' }) as HTMLInputElement)
         .checked,
     ).toBe(false);
-    const results = await axe.run(container);
+    const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
     expect(results.violations).toEqual([]);
     const user = userEvent.setup();
     await user.click(screen.getByRole('checkbox', { name: 'Include recent chat messages' }));

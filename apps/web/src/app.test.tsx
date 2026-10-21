@@ -80,6 +80,7 @@ describe('POSHA web shell', () => {
     await user.click(screen.getByRole('checkbox', { name: 'I understand these safety rules' }));
     await user.click(screen.getByRole('button', { name: 'Go to POSHA' }));
     expect(await screen.findByRole('heading', { name: 'Welcome to POSHA' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start text chat' })).toBeTruthy();
     const navigation = screen.getByRole('navigation', { name: 'Main navigation' });
     expect(navigation.querySelectorAll('a')).toHaveLength(5);
     expect(screen.getByRole('link', { name: /Home/ })).toBeTruthy();

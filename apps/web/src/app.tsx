@@ -14,6 +14,7 @@ import {
 import { Badge, Button, Checkbox, ErrorState, Input } from '@posha/ui';
 import type { AgeStatus, PoshaApiClient } from './api/client.js';
 import { HttpPoshaApiClient } from './api/client.js';
+import { ConnectPage } from './connect/ConnectPage.js';
 
 interface SessionContextValue {
   accessToken: string | null;
@@ -408,6 +409,7 @@ function MemberLayout() {
 }
 
 function HomePage() {
+  const navigate = useNavigate();
   return (
     <section className="page-content" aria-labelledby="home-title">
       <p className="eyebrow">A calmer way to connect</p>
@@ -418,11 +420,9 @@ function HomePage() {
           <h2>Start chatting</h2>
           <p>Text chat with another verified adult.</p>
         </div>
-        <Button disabled aria-describedby="chat-unavailable">
-          Coming soon
-        </Button>
+        <Button onClick={() => navigate('/connect')}>Start text chat</Button>
         <p className="fine-print" id="chat-unavailable">
-          Chat opens when the Connect pilot is ready.
+          Text chat is available to verified adults. Video chat stays locked.
         </p>
       </div>
       <Link className="secondary-link" to="/discover">
@@ -430,6 +430,12 @@ function HomePage() {
       </Link>
     </section>
   );
+}
+
+function ConnectRoute() {
+  const { accessToken, api } = useSession();
+  if (!accessToken) return <Navigate to="/welcome" replace />;
+  return <ConnectPage accessToken={accessToken} api={api} />;
 }
 
 function SimpleTabPage({ title, description }: { title: string; description: string }) {
@@ -585,6 +591,7 @@ export function WebRoutes({ api }: { api: PoshaApiClient }) {
         </Route>
         <Route path="/" element={<RequireVerifiedAdult />}>
           <Route path="home" element={<HomePage />} />
+          <Route path="connect" element={<ConnectRoute />} />
           <Route
             path="discover"
             element={
