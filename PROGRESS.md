@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-21 by Codex
 Current phase: Phase 2
-Current task: P2-05
-Next task: P2-06
+Current task: P2-06
+Next task: P2-07
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -39,6 +39,7 @@ Next task: P2-06
 | P2-02 | Done | 2026-10-20 | `27e7f94` | Gateway tests (6 for 3.4: auth/age gating, presence expiry, payload validation, gate-off video, flood limits, Redis failure); full workspace lint, typecheck, test (95 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), build, format, contrast, spec-coverage pass | Added Socket.IO `/connect` gateway, authenticate-before-message middleware, per-event account/age recheck, strict shared Zod events, Redis presence/rate-limit integration, and cross-instance adapter helper. Queue matching and message persistence remain behind the next service ports. |
 | P2-03 | Done | 2026-10-21 | `a830f4b` | 10 matchmaking tests; full workspace lint/typecheck/test (105 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), build, format, contrast, and spec-coverage pass. Redis integration not exercised because no test Redis is configured. | Added memory/Redis atomic matchmaking stores, worker and matchmaker with active-session checks, block/skip/interest ranking, alias-only match events, queue recovery, and PostgreSQL session store. |
 | P2-04 | Done | 2026-10-21 | `a830f4b` | Message, gateway, matchmaking, and migration tests pass (30 focused tests); API tests excluding the localhost liveness test: 80 passed, 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Workspace build, lint, typecheck, format, seed, contrast, and spec-coverage checks pass. Full suite liveness test is sandbox-blocked (`listen EPERM` on 127.0.0.1). | Added encrypted chat relay, idempotent persistence, moderation provider/flag queue, repeated-flag escalation, Redis flood mute, and bounded seven-day retention worker. |
+| P2-05 | Done | 2026-10-21 | `d27784d` | Report/block service tests (4), migration contract test, sheet tests (2 incl. axe); API/web suites, workspace lint/typecheck/build/format, seed, contrast, spec-coverage pass. PostgreSQL migration integration not run because `TEST_DATABASE_URL` is unset. | Added L2-guarded reports with reporter-scoped idempotency and encrypted, explicitly consented latest-50 snapshots; session-scoped block without partner ID exposure; accessible report/block sheets. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
