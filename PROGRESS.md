@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-21 by Codex
 Current phase: Phase 2
-Current task: P2-06
-Next task: P2-07
+Current task: P2-07
+Next task: P2-08
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -40,6 +40,7 @@ Next task: P2-07
 | P2-03 | Done | 2026-10-21 | `a830f4b` | 10 matchmaking tests; full workspace lint/typecheck/test (105 passed; 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`), build, format, contrast, and spec-coverage pass. Redis integration not exercised because no test Redis is configured. | Added memory/Redis atomic matchmaking stores, worker and matchmaker with active-session checks, block/skip/interest ranking, alias-only match events, queue recovery, and PostgreSQL session store. |
 | P2-04 | Done | 2026-10-21 | `a830f4b` | Message, gateway, matchmaking, and migration tests pass (30 focused tests); API tests excluding the localhost liveness test: 80 passed, 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Workspace build, lint, typecheck, format, seed, contrast, and spec-coverage checks pass. Full suite liveness test is sandbox-blocked (`listen EPERM` on 127.0.0.1). | Added encrypted chat relay, idempotent persistence, moderation provider/flag queue, repeated-flag escalation, Redis flood mute, and bounded seven-day retention worker. |
 | P2-05 | Done | 2026-10-21 | `d27784d` | Report/block service tests (4), migration contract test, sheet tests (2 incl. axe); API/web suites, workspace lint/typecheck/build/format, seed, contrast, spec-coverage pass. PostgreSQL migration integration not run because `TEST_DATABASE_URL` is unset. | Added L2-guarded reports with reporter-scoped idempotency and encrypted, explicitly consented latest-50 snapshots; session-scoped block without partner ID exposure; accessible report/block sheets. |
+| P2-06 | Done | 2026-10-21 | `424e22b` | Connect UI journey (2 tests incl. axe); full API tests excluding sandbox-blocked liveness: 85 passed, 9 PostgreSQL integration tests skipped; web suite (9 passed); workspace lint/typecheck/build/format, seed, contrast, and spec-coverage pass. | Added authenticated Socket.IO text queue/chat UI, match alias display, messaging, Next/Leave, report/block sheets, queue/error/empty states, and race-safe Next handling. Video remains unavailable. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
