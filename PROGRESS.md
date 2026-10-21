@@ -10,7 +10,7 @@ Next task: P3-04
 
 | Stage | Task | Commit | Tests | Notes |
 |---|---|---|---|---|
-| S0 — Orientation & baseline | B-S0-01..04 | docs-only | gates green | No code changes except docs. |
+| S0 — Orientation & baseline | B-S0-01..04 | ff1d50a | gates green | No code changes except docs. Done. |
 | S1 — Backend actually runs | B-S1-01..05 | pending | Supertest boot | API serves real routes without Docker; web can call. |
 | S2 — Design foundation | B-S2-01..05 | pending | component+axe | Love-app theme, light/dark, motion kit. |
 | S3 — Guest age gate | B-S3-01..05 | pending | guest API + guards | Guest session + entry flow; no OTP. |
