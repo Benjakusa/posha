@@ -26,3 +26,10 @@ export interface ConnectRealtimePort {
 }
 
 export const CONNECT_REALTIME_PORT = Symbol('CONNECT_REALTIME_PORT');
+
+export class ConnectRealtimeError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+    this.name = 'ConnectRealtimeError';
+  }
+}

@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Optional } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -28,7 +28,14 @@ import type { RateLimitStore } from '../policies/rate-limit.store.js';
 import { RATE_LIMIT_STORE } from '../policies/rate-limit.store.js';
 import { CONNECT_PRESENCE_STORE } from './connect-presence.store.js';
 import type { ConnectPresenceStore } from './connect-presence.store.js';
-import { CONNECT_REALTIME_PORT } from './connect-realtime.port.js';
+import { CONNECT_MATCH_EVENTS } from './connect-match-events.js';
+import {
+  CONNECT_CHAT_ABUSE_STORE,
+  MemoryConnectChatAbuseStore,
+} from './connect-chat-abuse.store.js';
+import type { ConnectChatAbuseStore } from './connect-chat-abuse.store.js';
+import type { ConnectSocketMatchEvents } from './connect-match-events.js';
+import { CONNECT_REALTIME_PORT, ConnectRealtimeError } from './connect-realtime.port.js';
 import type { ConnectRealtimePort } from './connect-realtime.port.js';
 
 interface SocketPrincipal {
@@ -65,20 +72,17 @@ const ALLOWED_ERROR_CODES = new Set<string>([
   ErrorCodes.UNAUTHORIZED,
   ErrorCodes.ACCOUNT_INACTIVE,
   ErrorCodes.AGE_LEVEL_REQUIRED,
+  ErrorCodes.CONFLICT,
   ErrorCodes.VALIDATION_ERROR,
   ErrorCodes.RATE_LIMITED,
   ErrorCodes.RATE_LIMIT_UNAVAILABLE,
   ErrorCodes.GATE_DISABLED,
   ErrorCodes.SESSION_NOT_FOUND,
   ErrorCodes.SERVICE_UNAVAILABLE,
+  ErrorCodes.CONTENT_BLOCKED,
+  ErrorCodes.SAFETY_ESCALATED,
+  ErrorCodes.TEMPORARILY_MUTED,
 ]);
-
-export class ConnectRealtimeError extends Error {
-  constructor(readonly code: string) {
-    super(code);
-    this.name = 'ConnectRealtimeError';
-  }
-}
 
 @WebSocketGateway({
   namespace: '/connect',
@@ -87,6 +91,7 @@ export class ConnectRealtimeError extends Error {
   pingTimeout: 15_000,
 })
 export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  private readonly localChatAbuse = new MemoryConnectChatAbuseStore();
   constructor(
     private readonly authService: AuthService,
     @Inject(AUTH_STORE) private readonly authStore: AuthStore,
@@ -94,9 +99,14 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     @Inject(RATE_LIMIT_STORE) private readonly rateLimits: RateLimitStore,
     @Inject(CONNECT_PRESENCE_STORE) private readonly presence: ConnectPresenceStore,
     @Inject(CONNECT_REALTIME_PORT) private readonly connect: ConnectRealtimePort,
+    @Inject(CONNECT_MATCH_EVENTS) private readonly matchEvents: ConnectSocketMatchEvents,
+    @Optional()
+    @Inject(CONNECT_CHAT_ABUSE_STORE)
+    private readonly chatAbuse?: ConnectChatAbuseStore,
   ) {}
 
   afterInit(server: Namespace): void {
+    this.matchEvents.attach(server);
     // Authenticate in namespace middleware: Nest's async connection hook does not gate event delivery.
     server.use((client, next) => {
       void this.authenticate(client as ConnectSocket).then(
@@ -264,14 +274,45 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     if (!(await this.refreshPrincipal(client))) return null;
     const policy = customPolicy ?? EVENT_POLICIES[event];
     const principal = client.data.principal!;
+    if (event === 'chat.send') {
+      try {
+        if (await (this.chatAbuse ?? this.localChatAbuse).isMuted(principal.userId)) {
+          client.emit('safety.warning', {
+            code: ErrorCodes.TEMPORARILY_MUTED,
+            retryAfterMs: 30_000,
+          });
+          return null;
+        }
+      } catch {
+        client.emit('error', { code: ErrorCodes.RATE_LIMIT_UNAVAILABLE });
+        return null;
+      }
+    }
     if (policy) {
       try {
         const result = await this.rateLimits.consume(policy, `${principal.userId}:${client.id}`);
         if (!result.allowed) {
-          client.emit('error', {
-            code: ErrorCodes.RATE_LIMITED,
-            retryAfterMs: result.retryAfterMs,
-          });
+          if (event === 'chat.send') {
+            const flood = await (this.chatAbuse ?? this.localChatAbuse).recordFlood(
+              principal.userId,
+            );
+            if (flood === 'warn') {
+              client.emit('safety.warning', {
+                code: ErrorCodes.RATE_LIMITED,
+                retryAfterMs: result.retryAfterMs,
+              });
+            } else {
+              client.emit('safety.warning', {
+                code: ErrorCodes.TEMPORARILY_MUTED,
+                retryAfterMs: 30_000,
+              });
+            }
+          } else {
+            client.emit('error', {
+              code: ErrorCodes.RATE_LIMITED,
+              retryAfterMs: result.retryAfterMs,
+            });
+          }
           return null;
         }
       } catch {
@@ -319,7 +360,16 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   }
 
   private emitError(client: ConnectSocket, error: unknown): void {
-    client.emit('error', { code: this.errorCode(error) });
+    const code = this.errorCode(error);
+    if (
+      code === ErrorCodes.CONTENT_BLOCKED ||
+      code === ErrorCodes.SAFETY_ESCALATED ||
+      code === ErrorCodes.TEMPORARILY_MUTED
+    ) {
+      client.emit('safety.warning', { code });
+      return;
+    }
+    client.emit('error', { code });
   }
 
   private errorCode(error: unknown): string {

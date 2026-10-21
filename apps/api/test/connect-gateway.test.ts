@@ -7,6 +7,7 @@ import type { RateLimitStore } from '../src/policies/rate-limit.store.js';
 import { MemoryConnectPresenceStore } from '../src/connect/connect-presence.store.js';
 import type { ConnectRealtimePort } from '../src/connect/connect-realtime.port.js';
 import { ConnectGateway } from '../src/connect/connect.gateway.js';
+import { ConnectSocketMatchEvents } from '../src/connect/connect-match-events.js';
 
 class FakeSocket {
   id = 'socket-1';
@@ -84,6 +85,7 @@ const makeGateway = (
       rateLimits,
       presence,
       connect,
+      new ConnectSocketMatchEvents(),
     ),
     authStore,
     rateLimits,
@@ -124,12 +126,12 @@ describe('Connect realtime gateway (P2-02)', () => {
     const socket = new FakeSocket();
     expect(await authenticate(gateway, socket)).toBeUndefined();
     expect(socket.joined).toEqual(['user-1']);
-    expect(presence.isOnline('user-1')).toBe(true);
+    expect(await presence.isOnline('user-1')).toBe(true);
     let now = 46_001;
     const expiringPresence = new MemoryConnectPresenceStore(() => now);
     await expiringPresence.refresh('user-1', 'socket-1');
     now += 45_001;
-    expect(expiringPresence.isOnline('user-1')).toBe(false);
+    expect(await expiringPresence.isOnline('user-1')).toBe(false);
   });
 
   it('validates queue payloads and leaves video unavailable while its gate is OFF', async () => {
@@ -148,7 +150,7 @@ describe('Connect realtime gateway (P2-02)', () => {
     });
   });
 
-  it('applies five chat messages per second per socket and relays only alias-safe payloads', async () => {
+  it('applies the five-per-second chat limit and warns before a temporary flood mute', async () => {
     const { gateway, connect } = makeGateway();
     const socket = new FakeSocket();
     await authenticate(gateway, socket);
@@ -161,10 +163,28 @@ describe('Connect realtime gateway (P2-02)', () => {
     expect(connect.sendMessage).toHaveBeenCalledTimes(5);
     expect(socket.events.filter((event) => event.event === 'user-2:chat.message')).toHaveLength(5);
     expect(socket.events.at(-1)).toMatchObject({
-      event: 'error',
+      event: 'safety.warning',
       payload: { code: 'RATE_LIMITED' },
     });
     expect(JSON.stringify(socket.events)).not.toContain('user-1');
+  });
+
+  it('temporarily mutes repeated chat flood violations', async () => {
+    const { gateway, connect } = makeGateway();
+    const socket = new FakeSocket();
+    await authenticate(gateway, socket);
+    const payload = {
+      sessionId: '019a4c00-0000-7000-8000-000000000001',
+      body: 'Hello',
+      clientMsgId: 'client-flood',
+    };
+    for (let i = 0; i < 8; i += 1) await gateway.chatSend(socket as never, payload);
+    expect(connect.sendMessage).toHaveBeenCalledTimes(5);
+    expect(socket.events.filter((event) => event.event === 'safety.warning')).toMatchObject([
+      { payload: { code: 'RATE_LIMITED' } },
+      { payload: { code: 'TEMPORARILY_MUTED' } },
+      { payload: { code: 'TEMPORARILY_MUTED' } },
+    ]);
   });
 
   it('rechecks current account age and status for every event', async () => {

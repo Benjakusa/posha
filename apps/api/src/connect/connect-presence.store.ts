@@ -5,6 +5,7 @@ const PRESENCE_TTL_SECONDS = 45;
 export interface ConnectPresenceStore {
   refresh(userId: string, socketId: string): Promise<void>;
   remove(userId: string, socketId: string): Promise<void>;
+  isOnline(userId: string): Promise<boolean>;
 }
 
 const REFRESH_SCRIPT = `
@@ -46,6 +47,12 @@ export class RedisConnectPresenceStore implements ConnectPresenceStore {
       arguments: [socketId],
     });
   }
+
+  async isOnline(userId: string): Promise<boolean> {
+    const now = this.now();
+    const result = await this.client.zCount(`${this.prefix}:${userId}`, now + 1, '+inf');
+    return result > 0;
+  }
 }
 
 export class MemoryConnectPresenceStore implements ConnectPresenceStore {
@@ -67,7 +74,7 @@ export class MemoryConnectPresenceStore implements ConnectPresenceStore {
     if (entries?.size === 0) this.sockets.delete(userId);
   }
 
-  isOnline(userId: string): boolean {
+  async isOnline(userId: string): Promise<boolean> {
     const entries = this.sockets.get(userId);
     if (!entries) return false;
     const now = this.now();

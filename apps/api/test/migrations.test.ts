@@ -29,6 +29,10 @@ const connectSafetyMigrationPath = new URL(
   '../../../infra/db/migrations/008_connect_safety.sql',
   import.meta.url,
 );
+const connectMessageControlsMigrationPath = new URL(
+  '../../../infra/db/migrations/009_connect_message_controls.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -131,5 +135,18 @@ describe('identity and core database migration', () => {
     expect(up).not.toMatch(/\b(body|details|snapshot|reason)\s+text\b/i);
     expect(up).toContain('connect_sessions_active_started_idx');
     expect(up).toContain('reports_status_created_idx');
+  });
+});
+
+describe('Connect message controls migration', () => {
+  it('[P2-04] adds retry idempotency and privacy-minimal moderation flags with rollback', async () => {
+    const migration = await readFile(connectMessageControlsMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('connect_messages_sender_client_msg_idx');
+    expect(up).toContain('connect_moderation_flags');
+    expect(up).toContain("severity IN ('review', 'urgent')");
+    expect(up).not.toMatch(/(body|message_text|content)\s+text\b/i);
+    expect(down).toContain('DROP TABLE connect_moderation_flags');
+    expect(down).toContain('DROP COLUMN client_msg_id');
   });
 });

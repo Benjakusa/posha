@@ -58,8 +58,8 @@ Rules: modules talk via exported services/DTOs only; no cross-module repository 
 ### 4.1 Random text chat
 1. Client opens WSS with access token → gateway validates, checks `age_level >= L2` (or L1 if flag allows text-only pilot).
 2. `connect.join_queue {mode:'text', interests[], lang, country_pref}` → Redis sorted-set queue per `(mode, lang)`.
-3. Matcher worker (tick 250 ms): pops candidates, rejects pairs where **either** user blocked/skipped the other in the last 24h (Redis set `skip:{u}` with TTL; Postgres `blocks` permanent), prefers interest overlap, creates `connect_sessions` row + room, emits `match.found` to both.
-4. Messages relayed via gateway; rate-limited; text moderated (keyword/ML hook, async); persisted only to the extent policy allows (see `07` retention).
+3. Matcher worker (tick 250 ms): claims both queue entries atomically, rejects pairs where either user blocked or skipped the other in the last 24h, prefers interest overlap, creates `connect_sessions`, then emits alias-only `match.found` to both. PostgreSQL active-session checks recover safely if Redis queue state is lost.
+4. Messages pass the injected moderation provider before relay; flagged text is withheld and a category-only review record is stored. Allowed text is AES-GCM encrypted in PostgreSQL for seven days, then removed by the retention worker (see `07`).
 5. `next`/`leave`/`report`/`block` end session; stale sessions reaped by heartbeat timeout (15 s).
 
 ### 4.2 Random video (GATE:RANDOM_VIDEO)

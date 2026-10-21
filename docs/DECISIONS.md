@@ -55,3 +55,11 @@ Connect message bodies, report details/snapshots, and moderation reasons are sto
 ## 2026-10-20 — Connect realtime transport
 
 Use Socket.IO for the `/connect` namespace and install connection middleware for token, active-account, and L2 checks before event handlers run. Recheck account state and token on each event. Event contracts are strict Zod schemas; production rate limits and presence use Redis. Deployments with multiple API instances must install the Redis Socket.IO adapter with dedicated trusted Pub/Sub clients.
+
+## 2026-10-20 — Connect matchmaking claims
+
+Text queues are Redis sorted sets partitioned by mode and language. A Redis Lua claim removes both queue entries and reserves both users atomically before PostgreSQL session creation; failed session writes release and requeue the pair. PostgreSQL active-session checks prevent a re-match if Redis queue state is lost. A Next action stores a symmetric 24-hour skip and requeues only its initiator with their saved queue context.
+
+## Connect chat message handling (P2-04)
+
+Chat text is classified before relay and never written to logs. Allowed messages use AES-256-GCM field encryption with an injected 32-byte application key, and PostgreSQL stores only ciphertext with a seven-day expiry. Moderation records contain category/severity metadata and message references, not plaintext. Client message IDs are unique per sender for retry safety. An injected moderation provider keeps production classifiers replaceable; the deterministic keyword provider is for local development/tests. Three explicit-content flags within 24 hours escalate to urgent review.

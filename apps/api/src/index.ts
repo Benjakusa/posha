@@ -19,10 +19,27 @@ export {
 } from './notifications/notification-provider.js';
 export { NOTIFICATION_TEMPLATES } from './notifications/notification-templates.js';
 export { ConnectModule } from './connect/connect.module.js';
-export { ConnectGateway, ConnectRealtimeError } from './connect/connect.gateway.js';
+export { ConnectGateway } from './connect/connect.gateway.js';
+export { ConnectRealtimeError } from './connect/connect-realtime.port.js';
 export {
   RedisConnectPresenceStore,
   MemoryConnectPresenceStore,
 } from './connect/connect-presence.store.js';
 export { RedisConnectIoAdapter } from './connect/redis-connect-io.adapter.js';
+export { ConnectMatchmaker, PostgresChatAliasResolver } from './connect/connect-matchmaker.js';
+export { ConnectMatcherWorker } from './connect/connect-matcher.worker.js';
+export {
+  PostgresConnectSessionStore,
+  MemoryConnectSessionStore,
+} from './connect/connect-session.store.js';
+export {
+  RedisMatchingStore,
+  MemoryMatchingStore,
+  RedisRecentSkipStore,
+  MemoryRecentSkipStore,
+} from './connect/matching-store.js';
 export { ProblemDetailsExceptionFilter, toProblemDetails } from './problem-details.filter.js';
+
+export * from './connect/connect-message.service.js';
+export * from './connect/connect-retention.worker.js';
+export * from './connect/connect-chat-abuse.store.js';
