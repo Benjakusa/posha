@@ -39,6 +39,32 @@ export interface GateApproval {
   reason: string;
 }
 
+export type ModerationAction = 'warn' | 'mute' | 'suspend' | 'ban' | 'remove_content';
+export interface ModerationReport {
+  id: string;
+  target: string;
+  targetType: 'user' | 'session' | 'message' | 'media' | 'room';
+  reasonCode: string;
+  status: 'open' | 'triaged' | 'actioned' | 'dismissed' | 'escalated' | 'appealed';
+  priority: 'urgent' | 'review';
+  createdAt: string;
+  evidenceAvailable: boolean;
+}
+export interface ModerationAppeal {
+  id: string;
+  action: ModerationAction;
+  target: string;
+  createdAt: string;
+  reason: string;
+  originalReviewer: string;
+  permanent: boolean;
+}
+export interface ModerationDecision {
+  action: ModerationAction;
+  reason: string;
+  expiresAt?: string;
+}
+
 export interface AdminApi {
   getSession(): Promise<StaffSession | null>;
   beginSso(): Promise<void>;
@@ -46,6 +72,10 @@ export interface AdminApi {
   getAuditLog(): Promise<readonly AuditRecord[]>;
   getGates(): Promise<readonly GateRecord[]>;
   enableGate(key: string, approval: GateApproval): Promise<void>;
+  getReports(): Promise<readonly ModerationReport[]>;
+  takeModerationAction(reportId: string, decision: ModerationDecision): Promise<void>;
+  getAppeals(): Promise<readonly ModerationAppeal[]>;
+  decideAppeal(appealId: string, accepted: boolean, reason: string): Promise<void>;
 }
 
 /** Production adapter. Auth endpoints are intentionally unavailable until an SSO vendor is selected. */
@@ -88,6 +118,46 @@ export class HttpAdminApi implements AdminApi {
       body: JSON.stringify(approval),
     });
     if (!response.ok) throw new Error('Gate approval was rejected.');
+  }
+
+  async getReports(): Promise<readonly ModerationReport[]> {
+    const response = await fetch(`${this.baseUrl}/admin/reports?status=open`, {
+      credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Moderation queue is unavailable.');
+    return (await response.json()) as readonly ModerationReport[];
+  }
+
+  async takeModerationAction(reportId: string, decision: ModerationDecision): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/admin/reports/${encodeURIComponent(reportId)}/action`,
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
+        body: JSON.stringify(decision),
+      },
+    );
+    if (!response.ok) throw new Error('Moderation action was rejected.');
+  }
+
+  async getAppeals(): Promise<readonly ModerationAppeal[]> {
+    const response = await fetch(`${this.baseUrl}/admin/appeals`, { credentials: 'include' });
+    if (!response.ok) throw new Error('Appeals are unavailable.');
+    return (await response.json()) as readonly ModerationAppeal[];
+  }
+
+  async decideAppeal(appealId: string, accepted: boolean, reason: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/admin/appeals/${encodeURIComponent(appealId)}/decide`,
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
+        body: JSON.stringify({ decision: accepted ? 'accepted' : 'rejected', reason }),
+      },
+    );
+    if (!response.ok) throw new Error('Appeal decision was rejected.');
   }
 }
 

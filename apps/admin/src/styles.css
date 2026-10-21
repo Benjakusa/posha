@@ -283,6 +283,115 @@ tbody tr:last-child td {
   display: grid;
   gap: 10px;
 }
+.moderation-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 28px 0 12px;
+  font-size: 16px;
+}
+.moderation-list {
+  display: grid;
+  gap: 12px;
+}
+.moderation-card {
+  padding: 17px;
+  border: 1px solid #e2e5e1;
+  border-radius: 11px;
+  background: #fff;
+}
+.moderation-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.moderation-card-head h4 {
+  display: inline-block;
+  margin: 0 0 0 9px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+.moderation-card-head time {
+  color: #68716b;
+  font-size: 11px;
+}
+.priority-pill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 20px;
+  color: #5d4b20;
+  background: #f5edda;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.priority-pill.urgent {
+  color: #8b2630;
+  background: #fae7e8;
+}
+.moderation-card > p {
+  color: #5f6862;
+  font-size: 12px;
+}
+.moderation-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eef0ed;
+}
+.moderation-fields label {
+  display: grid;
+  gap: 6px;
+  color: #454d47;
+  font-size: 12px;
+  font-weight: 600;
+}
+.moderation-fields input,
+.moderation-fields select,
+.moderation-fields textarea {
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #cfd5cf;
+  border-radius: 7px;
+  color: #202221;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+.moderation-fields textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+.moderation-fields .role-note {
+  grid-column: 1 / -1;
+}
+.moderation-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.outline-button {
+  min-height: 39px;
+  padding: 0 13px;
+  border: 1px solid #cfd5cf;
+  border-radius: 7px;
+  color: #424943;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.outline-button:disabled {
+  color: #777e79;
+  background: #e6e9e5;
+  cursor: not-allowed;
+}
 .gate-card {
   padding: 16px;
 }

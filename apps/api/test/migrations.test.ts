@@ -33,6 +33,10 @@ const connectReportMigrationPath = new URL(
   '../../../infra/db/migrations/010_connect_reports_idempotency.sql',
   import.meta.url,
 );
+const moderationWorkflowMigrationPath = new URL(
+  '../../../infra/db/migrations/011_moderation_workflow.sql',
+  import.meta.url,
+);
 const connectMessageControlsMigrationPath = new URL(
   '../../../infra/db/migrations/009_connect_message_controls.sql',
   import.meta.url,
@@ -162,5 +166,20 @@ describe('Connect report migration', () => {
     expect(up).toContain('reports_reporter_idempotency_uidx');
     expect(up).toContain('ALTER COLUMN idempotency_key SET NOT NULL');
     expect(down).toContain('DROP COLUMN idempotency_key');
+  });
+});
+
+describe('moderation workflow migration', () => {
+  it('[P2-07] supports idempotent actions, revocation, private appeals, and independent decisions', async () => {
+    const migration = await readFile(moderationWorkflowMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('moderation_actions_staff_idempotency_uidx');
+    expect(up).toContain('moderation_actions_active_mute_idx');
+    expect(up).toContain('appeal_ciphertext bytea NOT NULL');
+    expect(up).toContain('decision_reason_ciphertext bytea');
+    expect(up).toContain('appeals_one_open_per_action_uidx');
+    expect(up).not.toMatch(/\b(appeal|decision_reason)\s+text\b/i);
+    expect(down).toContain('DROP TABLE appeals');
+    expect(down).toContain('DROP COLUMN revoked_at');
   });
 });

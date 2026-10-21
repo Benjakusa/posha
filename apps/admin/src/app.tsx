@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AdminApi, AdminRole, AuditRecord, GateRecord, StaffSession } from './admin-api.js';
+import type {
+  AdminApi,
+  AdminRole,
+  AuditRecord,
+  GateRecord,
+  ModerationAction,
+  ModerationDecision,
+  ModerationReport,
+  StaffSession,
+} from './admin-api.js';
 import './styles.css';
 
-type Page = 'overview' | 'audit' | 'gates';
+type Page = 'overview' | 'audit' | 'gates' | 'moderation';
 
 const roleLabels: Record<AdminRole, string> = {
   moderator: 'Moderator',
@@ -22,6 +31,16 @@ function mayReadGates(session: StaffSession): boolean {
 
 function mayUpdateGates(session: StaffSession): boolean {
   return session.roles.includes('super_admin');
+}
+
+function mayReadModeration(session: StaffSession): boolean {
+  return session.roles.some((role) =>
+    ['moderator', 'support_agent', 'compliance_officer', 'super_admin'].includes(role),
+  );
+}
+
+function mayActOnModeration(session: StaffSession): boolean {
+  return session.roles.some((role) => role === 'moderator' || role === 'super_admin');
 }
 
 function mayOpenAdmin(session: StaffSession | null): session is StaffSession {
@@ -137,6 +156,7 @@ export function AdminApp({ api }: { api: AdminApi }) {
     { id: 'overview', label: 'Overview', available: true },
     { id: 'audit', label: 'Audit log', available: mayReadAudit(session) },
     { id: 'gates', label: 'Flags & gates', available: mayReadGates(session) },
+    { id: 'moderation', label: 'Reports & appeals', available: mayReadModeration(session) },
   ];
   const visibleLinks = links.filter((link) => link.available);
   const currentPage = visibleLinks.some((link) => link.id === page) ? page : 'overview';
@@ -177,7 +197,9 @@ export function AdminApp({ api }: { api: AdminApi }) {
                 ? 'Overview'
                 : currentPage === 'audit'
                   ? 'Audit log'
-                  : 'Flags & gates'}
+                  : currentPage === 'gates'
+                    ? 'Flags & gates'
+                    : 'Reports & appeals'}
             </h1>
           </div>
           <div className="identity">
@@ -193,8 +215,325 @@ export function AdminApp({ api }: { api: AdminApi }) {
         {currentPage === 'overview' && <Overview session={session} />}
         {currentPage === 'audit' && <AuditPage api={api} />}
         {currentPage === 'gates' && <GatesPage api={api} canUpdate={mayUpdateGates(session)} />}
+        {currentPage === 'moderation' && (
+          <ModerationPage
+            api={api}
+            canAct={mayActOnModeration(session)}
+            staffSubject={session.subject}
+          />
+        )}
       </main>
     </div>
+  );
+}
+
+function ModerationPage({
+  api,
+  canAct,
+  staffSubject,
+}: {
+  api: AdminApi;
+  canAct: boolean;
+  staffSubject: string;
+}) {
+  const [reports, setReports] = useState<readonly ModerationReport[]>([]);
+  const [appeals, setAppeals] = useState<Awaited<ReturnType<AdminApi['getAppeals']>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState('');
+  const [decisions, setDecisions] = useState<Record<string, ModerationDecision>>({});
+  const [appealReasons, setAppealReasons] = useState<Record<string, string>>({});
+
+  async function refresh() {
+    setLoading(true);
+    setError('');
+    try {
+      const [nextReports, nextAppeals] = await Promise.all([api.getReports(), api.getAppeals()]);
+      setReports(
+        [...nextReports].sort((a, b) => {
+          if (a.priority !== b.priority) return a.priority === 'urgent' ? -1 : 1;
+          return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+        }),
+      );
+      setAppeals(nextAppeals);
+    } catch {
+      setError('Reports and appeals could not be loaded. Staff access may not be configured.');
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    void refresh();
+  }, [api]);
+
+  function updateDecision(reportId: string, patch: Partial<ModerationDecision>) {
+    setDecisions((current) => ({
+      ...current,
+      [reportId]: { action: 'warn', reason: '', ...current[reportId], ...patch },
+    }));
+  }
+  async function submitAction(report: ModerationReport) {
+    const decision = decisions[report.id];
+    if (!canAct || !decision?.reason.trim()) return;
+    if (['mute', 'suspend'].includes(decision.action) && !decision.expiresAt) return;
+    setPending(report.id);
+    setError('');
+    try {
+      await api.takeModerationAction(report.id, decision);
+      await refresh();
+    } catch {
+      setError('The moderation action was not recorded.');
+    } finally {
+      setPending('');
+    }
+  }
+  async function decideAppeal(appealId: string, accepted: boolean) {
+    const reason = appealReasons[appealId]?.trim();
+    if (!canAct || !reason) return;
+    setPending(appealId);
+    setError('');
+    try {
+      await api.decideAppeal(appealId, accepted, reason);
+      await refresh();
+    } catch {
+      setError('The appeal decision was not recorded.');
+    } finally {
+      setPending('');
+    }
+  }
+
+  return (
+    <section className="content-section" aria-labelledby="moderation-title">
+      <div className="section-intro">
+        <div>
+          <h2 id="moderation-title">Safety review</h2>
+          <p className="muted">
+            Urgent reports are listed first. Conversation content stays sealed.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
+          Refresh queue
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="error-message">
+          {error}
+        </p>
+      )}
+      {loading ? (
+        <p role="status">Loading reports and appeals…</p>
+      ) : (
+        <>
+          <h3 className="moderation-subtitle">
+            Reports <span className="count-pill">{reports.length}</span>
+          </h3>
+          {reports.length === 0 ? (
+            <div className="empty-panel">
+              <h3>No open reports</h3>
+              <p>New reports will appear here for review.</p>
+            </div>
+          ) : (
+            <div className="moderation-list">
+              {reports.map((report) => (
+                <ModerationReportCard
+                  key={report.id}
+                  report={report}
+                  canAct={canAct}
+                  decision={decisions[report.id] ?? { action: 'warn', reason: '' }}
+                  disabled={pending === report.id}
+                  onChange={(patch) => updateDecision(report.id, patch)}
+                  onSubmit={() => void submitAction(report)}
+                />
+              ))}
+            </div>
+          )}
+          <h3 className="moderation-subtitle">
+            Appeals <span className="count-pill">{appeals.length}</span>
+          </h3>
+          {appeals.length === 0 ? (
+            <div className="empty-panel">
+              <h3>No open appeals</h3>
+              <p>Member appeals will appear here for independent review.</p>
+            </div>
+          ) : (
+            <div className="moderation-list">
+              {appeals.map((appeal) => {
+                const secondReviewerRequired =
+                  appeal.permanent && appeal.originalReviewer === staffSubject;
+                return (
+                  <article className="moderation-card" key={appeal.id}>
+                    <div className="moderation-card-head">
+                      <div>
+                        <span className="priority-pill">Appeal</span>
+                        <h4>
+                          {appeal.action.replace('_', ' ')} · {appeal.target}
+                        </h4>
+                      </div>
+                      <time>{new Date(appeal.createdAt).toLocaleString()}</time>
+                    </div>
+                    <p>{appeal.reason}</p>
+                    {appeal.permanent && (
+                      <p className="muted">
+                        Permanent action · original reviewer {appeal.originalReviewer}
+                      </p>
+                    )}
+                    {canAct ? (
+                      <div className="moderation-fields">
+                        <label>
+                          Decision reason
+                          <textarea
+                            value={appealReasons[appeal.id] ?? ''}
+                            onChange={(event) =>
+                              setAppealReasons({
+                                ...appealReasons,
+                                [appeal.id]: event.target.value,
+                              })
+                            }
+                            required
+                          />
+                        </label>
+                        {secondReviewerRequired && (
+                          <p className="role-note">
+                            A different moderator must decide this permanent-action appeal.
+                          </p>
+                        )}
+                        <div className="moderation-buttons">
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={
+                              !appealReasons[appeal.id]?.trim() ||
+                              secondReviewerRequired ||
+                              pending === appeal.id
+                            }
+                            onClick={() => void decideAppeal(appeal.id, true)}
+                          >
+                            Accept appeal
+                          </button>
+                          <button
+                            type="button"
+                            className="outline-button"
+                            disabled={
+                              !appealReasons[appeal.id]?.trim() ||
+                              secondReviewerRequired ||
+                              pending === appeal.id
+                            }
+                            onClick={() => void decideAppeal(appeal.id, false)}
+                          >
+                            Reject appeal
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="role-note">Read-only. A moderator must decide this appeal.</p>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+          {!canAct && (
+            <p className="muted role-note">
+              Read-only queue. Only moderators and super admins can record actions.
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function ModerationReportCard({
+  report,
+  canAct,
+  decision,
+  disabled,
+  onChange,
+  onSubmit,
+}: {
+  report: ModerationReport;
+  canAct: boolean;
+  decision: ModerationDecision;
+  disabled: boolean;
+  onChange(patch: Partial<ModerationDecision>): void;
+  onSubmit(): void;
+}) {
+  const durationRequired = decision.action === 'mute' || decision.action === 'suspend';
+  return (
+    <article className="moderation-card">
+      <div className="moderation-card-head">
+        <div>
+          <span className={`priority-pill ${report.priority}`}>
+            {report.priority === 'urgent' ? 'Urgent' : 'Review'}
+          </span>
+          <h4>
+            {report.reasonCode.replaceAll('_', ' ')} · {report.targetType}
+          </h4>
+        </div>
+        <time>{new Date(report.createdAt).toLocaleString()}</time>
+      </div>
+      <p>
+        Reference {report.target} · status {report.status}
+        {report.evidenceAvailable ? ' · consented evidence available' : ''}
+      </p>
+      {canAct ? (
+        <div className="moderation-fields">
+          <label>
+            Action
+            <select
+              value={decision.action}
+              onChange={(event) => onChange({ action: event.target.value as ModerationAction })}
+            >
+              <option value="warn">Warn</option>
+              <option value="mute">Mute</option>
+              <option value="suspend">Suspend</option>
+              <option value="ban">Ban</option>
+              <option value="remove_content">Remove content</option>
+            </select>
+          </label>
+          {durationRequired && (
+            <label>
+              Expires at
+              <input
+                type="datetime-local"
+                value={decision.expiresAt?.slice(0, 16) ?? ''}
+                onChange={(event) =>
+                  onChange({
+                    expiresAt: event.target.value ? new Date(event.target.value).toISOString() : '',
+                  })
+                }
+                required
+              />
+            </label>
+          )}
+          <label>
+            Reason
+            <textarea
+              value={decision.reason}
+              onChange={(event) => onChange({ reason: event.target.value })}
+              required
+            />
+          </label>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={
+              disabled || !decision.reason.trim() || (durationRequired && !decision.expiresAt)
+            }
+            onClick={onSubmit}
+          >
+            {disabled ? 'Recording…' : 'Record action'}
+          </button>
+        </div>
+      ) : (
+        <p className="role-note">Read-only. A moderator must review and act on this report.</p>
+      )}
+    </article>
   );
 }
 

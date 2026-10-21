@@ -1,7 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AdminApi, AuditRecord, GateRecord, StaffSession } from './admin-api.js';
+import type {
+  AdminApi,
+  AuditRecord,
+  GateRecord,
+  ModerationAppeal,
+  ModerationReport,
+  StaffSession,
+} from './admin-api.js';
 import { AdminApp } from './app.js';
 
 const gates: GateRecord[] = [
@@ -34,6 +41,39 @@ const auditRecords: AuditRecord[] = [
     reason: 'Launch review complete',
   },
 ];
+const reports: ModerationReport[] = [
+  {
+    id: 'report-review',
+    target: 'ref-a',
+    targetType: 'session',
+    reasonCode: 'spam_contact',
+    status: 'open',
+    priority: 'review',
+    createdAt: '2026-10-20T08:30:00.000Z',
+    evidenceAvailable: false,
+  },
+  {
+    id: 'report-urgent',
+    target: 'ref-b',
+    targetType: 'message',
+    reasonCode: 'threat',
+    status: 'open',
+    priority: 'urgent',
+    createdAt: '2026-10-20T08:31:00.000Z',
+    evidenceAvailable: true,
+  },
+];
+const appeals: ModerationAppeal[] = [
+  {
+    id: 'appeal-1',
+    action: 'ban',
+    target: 'ref-c',
+    createdAt: '2026-10-20T08:32:00.000Z',
+    reason: 'I believe this was a mistake.',
+    originalReviewer: 'staff-mod',
+    permanent: true,
+  },
+];
 
 function makeApi(session: StaffSession | null, overrides: Partial<AdminApi> = {}): AdminApi {
   return {
@@ -43,6 +83,10 @@ function makeApi(session: StaffSession | null, overrides: Partial<AdminApi> = {}
     getAuditLog: vi.fn().mockResolvedValue(auditRecords),
     getGates: vi.fn().mockResolvedValue(gates),
     enableGate: vi.fn().mockResolvedValue(undefined),
+    getReports: vi.fn().mockResolvedValue(reports),
+    takeModerationAction: vi.fn().mockResolvedValue(undefined),
+    getAppeals: vi.fn().mockResolvedValue(appeals),
+    decideAppeal: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -57,6 +101,12 @@ const compliance: StaffSession = {
   subject: 'staff-2',
   displayName: 'Cory Compliance',
   roles: ['compliance_officer'],
+  mfaVerified: true,
+};
+const moderator: StaffSession = {
+  subject: 'staff-mod',
+  displayName: 'Mina Moderator',
+  roles: ['moderator'],
   mfaVerified: true,
 };
 
@@ -136,5 +186,59 @@ describe('gate controls (ADM-04)', () => {
     await screen.findByRole('heading', { name: 'Admin workspace' });
     const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
     expect(results.violations).toEqual([]);
+  });
+});
+
+describe('moderation queue (P2-07)', () => {
+  it('prioritizes urgent reports and requires a reason and duration for a mute', async () => {
+    const takeModerationAction = vi.fn().mockResolvedValue(undefined);
+    render(<AdminApp api={makeApi(moderator, { takeModerationAction })} />);
+    await screen.findByRole('heading', { name: 'Welcome, Mina Moderator' });
+    fireEvent.click(screen.getByRole('button', { name: 'Reports & appeals' }));
+    const urgent = await screen.findByText('threat · message');
+    const review = screen.getByText('spam contact · session');
+    expect(urgent.compareDocumentPosition(review) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const muteSelect = screen.getAllByLabelText('Action')[0] as HTMLSelectElement;
+    fireEvent.change(muteSelect, { target: { value: 'mute' } });
+    const reasonBoxes = screen.getAllByLabelText('Reason');
+    fireEvent.change(reasonBoxes[0]!, { target: { value: 'Repeated threats' } });
+    const record = screen.getAllByRole('button', { name: 'Record action' })[0] as HTMLButtonElement;
+    expect(record.disabled).toBe(true);
+    fireEvent.change(screen.getAllByLabelText('Expires at')[0]!, {
+      target: { value: '2026-10-22T10:00' },
+    });
+    expect(record.disabled).toBe(false);
+    fireEvent.click(record);
+    await waitFor(() =>
+      expect(takeModerationAction).toHaveBeenCalledWith('report-urgent', {
+        action: 'mute',
+        reason: 'Repeated threats',
+        expiresAt: expect.any(String),
+      }),
+    );
+  });
+
+  it('keeps support read-only and requires an independent reviewer for a permanent ban appeal', async () => {
+    const support: StaffSession = { ...compliance, roles: ['support_agent'] };
+    const api = makeApi(support);
+    render(<AdminApp api={api} />);
+    await screen.findByRole('heading', { name: 'Welcome, Cory Compliance' });
+    fireEvent.click(screen.getByRole('button', { name: 'Reports & appeals' }));
+    expect(
+      await screen.findAllByText('Read-only. A moderator must review and act on this report.'),
+    ).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Record action' })).toBeNull();
+
+    cleanup();
+    const decideAppeal = vi.fn();
+    render(<AdminApp api={makeApi(moderator, { decideAppeal })} />);
+    await screen.findByRole('heading', { name: 'Welcome, Mina Moderator' });
+    fireEvent.click(screen.getByRole('button', { name: 'Reports & appeals' }));
+    expect(
+      await screen.findByText('A different moderator must decide this permanent-action appeal.'),
+    ).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Accept appeal' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 });
