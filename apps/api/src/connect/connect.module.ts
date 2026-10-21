@@ -41,6 +41,15 @@ import { ConnectSafetyService } from './connect-safety.service.js';
 import { ConnectMetricsController } from './connect-metrics.controller.js';
 import { ConnectObservabilityService } from './connect-observability.service.js';
 import { ConnectMetricsGuard } from './connect-metrics.guard.js';
+import { ConnectVideoTokenController } from './connect-video-token.controller.js';
+import {
+  ConnectVideoTokenService,
+  DenyVideoConsentVerifier,
+  VIDEO_CONSENT_VERIFIER,
+} from './connect-video-token.service.js';
+import type { VideoConsentVerifier } from './connect-video-token.service.js';
+import { LiveKitSfuProvider, SFU_PROVIDER } from './connect-sfu.provider.js';
+import type { SfuProvider } from './connect-sfu.provider.js';
 import { CONNECT_CHAT_ABUSE_STORE } from './connect-chat-abuse.store.js';
 import type { ConnectChatAbuseStore } from './connect-chat-abuse.store.js';
 
@@ -63,6 +72,8 @@ export interface ConnectModuleOptions {
   messageCipher: ConnectMessageCipher;
   moderationProvider: ModerationProvider;
   chatAbuseStore: ConnectChatAbuseStore;
+  sfuProvider?: SfuProvider;
+  videoConsentVerifier?: VideoConsentVerifier;
 }
 
 @Module({})
@@ -79,7 +90,7 @@ export class ConnectModule {
           ownershipResolver: options.ownershipResolver,
         }),
       ],
-      controllers: [ConnectSafetyController, ConnectMetricsController],
+      controllers: [ConnectSafetyController, ConnectMetricsController, ConnectVideoTokenController],
       providers: [
         { provide: AuthService, useValue: options.authService },
         { provide: AUTH_STORE, useValue: options.authStore },
@@ -97,6 +108,26 @@ export class ConnectModule {
         { provide: CONNECT_CHAT_ABUSE_STORE, useValue: options.chatAbuseStore },
         ConnectObservabilityService,
         ConnectMetricsGuard,
+        { provide: SFU_PROVIDER, useValue: options.sfuProvider ?? new LiveKitSfuProvider() },
+        {
+          provide: VIDEO_CONSENT_VERIFIER,
+          useValue: options.videoConsentVerifier ?? new DenyVideoConsentVerifier(),
+        },
+        {
+          provide: ConnectVideoTokenService,
+          useFactory: (
+            sessions: ConnectSessionStore,
+            sfu: SfuProvider,
+            consent: VideoConsentVerifier,
+            featureFlags: FeatureFlagsService,
+          ) => new ConnectVideoTokenService(sessions, sfu, consent, featureFlags),
+          inject: [
+            CONNECT_SESSION_STORE,
+            SFU_PROVIDER,
+            VIDEO_CONSENT_VERIFIER,
+            FeatureFlagsService,
+          ],
+        },
         {
           provide: ConnectSafetyService,
           useFactory: (

@@ -4,7 +4,7 @@ export interface ConnectSessionRecord {
   id: string;
   userA: string;
   userB: string;
-  mode: 'text';
+  mode: 'text' | 'video';
   startedAt: Date;
   endedAt: Date | null;
   endReason: 'next' | 'leave' | 'report' | 'block' | 'timeout' | 'error' | null;
@@ -75,7 +75,7 @@ interface SessionRow {
   id: string;
   user_a: string;
   user_b: string;
-  mode: 'text';
+  mode: 'text' | 'video';
   started_at: Date;
   ended_at: Date | null;
   end_reason: ConnectSessionRecord['endReason'];

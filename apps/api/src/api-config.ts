@@ -7,6 +7,12 @@ export const ApiConfigSchema = z.object({
   OTEL_SERVICE_NAME: z.string().min(1).default('posha-api'),
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().url().optional(),
   METRICS_BEARER_TOKEN: z.string().min(32).optional(),
+  LIVEKIT_API_KEY: z.string().min(1).optional(),
+  LIVEKIT_API_SECRET: z.string().min(1).optional(),
+  LIVEKIT_URL: z
+    .string()
+    .regex(/^wss?:\/\//)
+    .optional(),
 });
 
 export type ApiConfig = z.infer<typeof ApiConfigSchema>;
