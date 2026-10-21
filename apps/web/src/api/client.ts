@@ -15,6 +15,12 @@ export interface AgeStartResult {
   status: 'pending';
 }
 
+export interface ConnectVideoToken {
+  url: string;
+  token: string;
+  expiresAt: string;
+}
+
 export interface PoshaApiClient {
   requestOtp(identity: string): Promise<void>;
   verifyOtp(identity: string, code: string): Promise<OtpSession>;
@@ -29,6 +35,7 @@ export interface PoshaApiClient {
     idempotencyKey: string,
   ): Promise<{ reportId: string; status: 'open' }>;
   blockConnectSession(accessToken: string, sessionId: string): Promise<{ blocked: true }>;
+  getConnectVideoToken(accessToken: string, sessionId: string): Promise<ConnectVideoToken>;
 }
 
 export class ApiRequestError extends Error {
@@ -108,6 +115,14 @@ export class HttpPoshaApiClient implements PoshaApiClient {
         method: 'POST',
         body: JSON.stringify({}),
       },
+      accessToken,
+    );
+  }
+
+  getConnectVideoToken(accessToken: string, sessionId: string): Promise<ConnectVideoToken> {
+    return this.request(
+      `/connect/sessions/${encodeURIComponent(sessionId)}/video-token`,
+      { method: 'POST' },
       accessToken,
     );
   }

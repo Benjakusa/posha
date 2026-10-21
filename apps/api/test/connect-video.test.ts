@@ -10,8 +10,10 @@ import {
 import { MemoryConnectSessionStore } from '../src/connect/connect-session.store.js';
 import type { ConnectSessionRecord } from '../src/connect/connect-session.store.js';
 import {
+  ConnectVideoConsentService,
   ConnectVideoTokenService,
   DenyVideoConsentVerifier,
+  SessionVideoConsentVerifier,
 } from '../src/connect/connect-video-token.service.js';
 import { FakeSfuProvider, LiveKitSfuProvider } from '../src/connect/connect-sfu.provider.js';
 
@@ -50,6 +52,28 @@ function sessionRecord(): ConnectSessionRecord {
 }
 
 describe('Connect video token service (P3-01)', () => {
+  it('requires each participant to accept before video consent becomes mutual', async () => {
+    const sessions = new MemoryConnectSessionStore();
+    const session = sessionRecord();
+    sessions.sessions.set(session.id, session);
+    const consent = new ConnectVideoConsentService(sessions, enabledFlags());
+    const verifier = new SessionVideoConsentVerifier(sessions);
+
+    await expect(consent.record(session.userA, session.id, true)).resolves.toMatchObject({
+      accepted: true,
+      mutualAccepted: false,
+      partnerUserId: session.userB,
+    });
+    await expect(verifier.hasMutualConsent(session.id)).resolves.toBe(false);
+    await expect(consent.record(session.userB, session.id, true)).resolves.toMatchObject({
+      accepted: true,
+      mutualAccepted: true,
+    });
+    await expect(verifier.hasMutualConsent(session.id)).resolves.toBe(true);
+    await consent.record(session.userA, session.id, false);
+    await expect(verifier.hasMutualConsent(session.id)).resolves.toBe(false);
+  });
+
   it('keeps video locked when RANDOM_VIDEO is OFF', async () => {
     const sessions = new MemoryConnectSessionStore();
     const session = sessionRecord();

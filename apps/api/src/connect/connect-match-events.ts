@@ -12,7 +12,7 @@ export class ConnectSocketMatchEvents implements ConnectMatchEvents {
 
   async matchFound(
     userId: string,
-    payload: { sessionId: string; partner: { alias: string }; mode: 'text' },
+    payload: { sessionId: string; partner: { alias: string }; mode: 'text' | 'video' },
   ): Promise<void> {
     if (!this.namespace) throw new Error('CONNECT_NAMESPACE_NOT_READY');
     this.namespace.to(userId).emit('match.found', payload);

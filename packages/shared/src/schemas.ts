@@ -157,6 +157,9 @@ export const ConnectChatSendSchema = z
   .strict();
 export const ConnectChatTypingSchema = z.object({ sessionId: z.string().uuid() }).strict();
 export const ConnectSessionSchema = z.object({ sessionId: z.string().uuid() }).strict();
+export const ConnectVideoConsentSchema = ConnectSessionSchema.extend({
+  accept: z.boolean(),
+}).strict();
 export const ConnectReportSchema = z
   .object({
     sessionId: z.string().uuid(),

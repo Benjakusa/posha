@@ -43,8 +43,10 @@ import { ConnectObservabilityService } from './connect-observability.service.js'
 import { ConnectMetricsGuard } from './connect-metrics.guard.js';
 import { ConnectVideoTokenController } from './connect-video-token.controller.js';
 import {
+  CONNECT_VIDEO_CONSENT_SERVICE,
+  ConnectVideoConsentService,
   ConnectVideoTokenService,
-  DenyVideoConsentVerifier,
+  SessionVideoConsentVerifier,
   VIDEO_CONSENT_VERIFIER,
 } from './connect-video-token.service.js';
 import type { VideoConsentVerifier } from './connect-video-token.service.js';
@@ -111,7 +113,15 @@ export class ConnectModule {
         { provide: SFU_PROVIDER, useValue: options.sfuProvider ?? new LiveKitSfuProvider() },
         {
           provide: VIDEO_CONSENT_VERIFIER,
-          useValue: options.videoConsentVerifier ?? new DenyVideoConsentVerifier(),
+          useFactory: (sessions: ConnectSessionStore) =>
+            options.videoConsentVerifier ?? new SessionVideoConsentVerifier(sessions),
+          inject: [CONNECT_SESSION_STORE],
+        },
+        {
+          provide: CONNECT_VIDEO_CONSENT_SERVICE,
+          useFactory: (sessions: ConnectSessionStore, featureFlags: FeatureFlagsService) =>
+            new ConnectVideoConsentService(sessions, featureFlags),
+          inject: [CONNECT_SESSION_STORE, FeatureFlagsService],
         },
         {
           provide: ConnectVideoTokenService,
@@ -199,6 +209,7 @@ export class ConnectModule {
               undefined,
               messages,
               metrics,
+              () => options.featureFlags.isEnabled('GATE:RANDOM_VIDEO'),
             ),
           inject: [
             MATCHING_STORE,

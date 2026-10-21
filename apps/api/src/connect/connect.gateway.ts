@@ -16,6 +16,7 @@ import {
   ConnectQueueJoinSchema,
   ConnectQueueLeaveSchema,
   ConnectSessionSchema,
+  ConnectVideoConsentSchema,
   ErrorCodes,
 } from '@posha/shared';
 import type { AuthStore } from '../auth/auth-store.js';
@@ -37,6 +38,10 @@ import type { ConnectChatAbuseStore } from './connect-chat-abuse.store.js';
 import type { ConnectSocketMatchEvents } from './connect-match-events.js';
 import { CONNECT_REALTIME_PORT, ConnectRealtimeError } from './connect-realtime.port.js';
 import type { ConnectRealtimePort } from './connect-realtime.port.js';
+import {
+  CONNECT_VIDEO_CONSENT_SERVICE,
+  ConnectVideoConsentService,
+} from './connect-video-token.service.js';
 
 interface SocketPrincipal {
   userId: string;
@@ -66,6 +71,12 @@ const EVENT_POLICIES: Record<string, RealtimeRatePolicy> = {
   'chat.typing': { name: 'connect.chat.typing', limit: 8, windowMs: 1_000, keyBy: 'principal' },
   'session.next': { name: 'connect.session.end', limit: 5, windowMs: 1_000, keyBy: 'principal' },
   'session.leave': { name: 'connect.session.end', limit: 5, windowMs: 1_000, keyBy: 'principal' },
+  'video.consent': {
+    name: 'connect.video.consent',
+    limit: 4,
+    windowMs: 60_000,
+    keyBy: 'principal',
+  },
 };
 
 const ALLOWED_ERROR_CODES = new Set<string>([
@@ -103,6 +114,9 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     @Optional()
     @Inject(CONNECT_CHAT_ABUSE_STORE)
     private readonly chatAbuse?: ConnectChatAbuseStore,
+    @Optional()
+    @Inject(CONNECT_VIDEO_CONSENT_SERVICE)
+    private readonly videoConsent?: ConnectVideoConsentService,
   ) {}
 
   afterInit(server: Namespace): void {
@@ -240,6 +254,38 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     @MessageBody() raw: unknown,
   ): Promise<void> {
     await this.endSession(client, 'session.leave', 'leave', raw);
+  }
+
+  @SubscribeMessage('video.consent')
+  async recordVideoConsent(
+    @ConnectedSocket() client: ConnectSocket,
+    @MessageBody() raw: unknown,
+  ): Promise<void> {
+    const parsed = await this.prepare(client, 'video.consent', ConnectVideoConsentSchema, raw);
+    if (!parsed) return;
+    if (!this.videoConsent) {
+      client.emit('error', { code: ErrorCodes.SERVICE_UNAVAILABLE });
+      return;
+    }
+    const userId = client.data.principal!.userId;
+    try {
+      const record = await this.videoConsent.record(userId, parsed.sessionId, parsed.accept);
+      if (!parsed.accept) {
+        const partnerUserId = await this.connect.endSession(userId, parsed.sessionId, 'leave');
+        client.emit('session.ended', { sessionId: parsed.sessionId, reason: 'leave' });
+        if (partnerUserId)
+          client.to(partnerUserId).emit('session.ended', {
+            sessionId: parsed.sessionId,
+            reason: 'leave',
+          });
+        return;
+      }
+      const state = { sessionId: parsed.sessionId, mutualAccepted: record.mutualAccepted };
+      client.emit('video.consent.state', state);
+      client.to(record.partnerUserId).emit('video.consent.state', state);
+    } catch (error) {
+      this.emitError(client, error);
+    }
   }
 
   private async endSession(

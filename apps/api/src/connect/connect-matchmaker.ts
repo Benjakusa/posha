@@ -36,7 +36,7 @@ export class PostgresChatAliasResolver implements ChatAliasResolver {
 export interface ConnectMatchEvents {
   matchFound(
     userId: string,
-    payload: { sessionId: string; partner: { alias: string }; mode: 'text' },
+    payload: { sessionId: string; partner: { alias: string }; mode: 'text' | 'video' },
   ): Promise<void>;
   sessionEnded(
     userId: string,
@@ -65,16 +65,18 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
     private readonly makeId: (date: Date) => string = generateUuidV7,
     private readonly messages?: ConnectMessageService,
     private readonly metrics?: ConnectObservabilityService,
+    private readonly videoEnabled: () => boolean = () => false,
   ) {}
 
   async joinQueue(userId: string, input: ConnectQueueJoin): Promise<QueueState> {
-    if (input.mode !== 'text') throw new ConnectRealtimeError(ErrorCodes.GATE_DISABLED);
+    if (input.mode === 'video' && !this.videoEnabled())
+      throw new ConnectRealtimeError(ErrorCodes.GATE_DISABLED);
     if (await this.sessions.findActiveForUser(userId)) {
       throw new ConnectRealtimeError(ErrorCodes.CONFLICT);
     }
     const entry: QueueEntry = {
       userId,
-      mode: 'text',
+      mode: input.mode,
       interests: [...input.interests],
       lang: input.lang,
       ...(input.countryPref ? { countryPref: input.countryPref } : {}),
@@ -198,7 +200,7 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
               id: sessionId,
               userA: first.userId,
               userB: second.userId,
-              mode: 'text',
+              mode: first.mode,
               startedAt: this.now(),
               endedAt: null,
               endReason: null,
@@ -222,12 +224,12 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
             this.events.matchFound(first.userId, {
               sessionId,
               partner: { alias: aliasForB },
-              mode: 'text',
+              mode: first.mode,
             }),
             this.events.matchFound(second.userId, {
               sessionId,
               partner: { alias: aliasForA },
-              mode: 'text',
+              mode: second.mode,
             }),
           ]);
         }

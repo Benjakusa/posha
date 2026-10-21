@@ -36,6 +36,11 @@ class FakeSocket {
 const api = {
   reportConnectSession: vi.fn(),
   blockConnectSession: vi.fn(),
+  getConnectVideoToken: vi.fn().mockResolvedValue({
+    url: 'wss://video.example.test',
+    token: 'video-token',
+    expiresAt: '2030-01-01T00:01:00.000Z',
+  }),
 } as unknown as PoshaApiClient;
 afterEach(() => {
   cleanup();
@@ -43,6 +48,55 @@ afterEach(() => {
 });
 
 describe('Connect chat flow (P2-06)', () => {
+  it('waits for mutual video consent before requesting room access', async () => {
+    const socket = new FakeSocket();
+    const user = userEvent.setup();
+    const videoApi = {
+      ...api,
+      getConnectVideoToken: vi.fn().mockResolvedValue({
+        url: 'wss://video.example.test',
+        token: 'video-token',
+        expiresAt: '2030-01-01T00:01:00.000Z',
+      }),
+    } as unknown as PoshaApiClient;
+    render(
+      <ConnectPage
+        accessToken="access-token"
+        api={videoApi}
+        videoEnabled
+        socketFactory={() => socket as unknown as ConnectClientSocket}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Find video chat' }));
+    expect(socket.emissions).toContainEqual({
+      event: 'queue.join',
+      payload: { mode: 'video', interests: [], lang: 'en' },
+    });
+    act(() =>
+      socket.fire('match.found', {
+        sessionId: 'video-session',
+        partner: { alias: 'RiverStone' },
+        mode: 'video',
+      }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Accept video' }));
+    expect(socket.emissions.at(-1)).toEqual({
+      event: 'video.consent',
+      payload: { sessionId: 'video-session', accept: true },
+    });
+    expect(videoApi.getConnectVideoToken).not.toHaveBeenCalled();
+    act(() =>
+      socket.fire('video.consent.state', {
+        sessionId: 'video-session',
+        mutualAccepted: true,
+      }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Enable camera and microphone' }),
+    ).toBeTruthy();
+    expect(videoApi.getConnectVideoToken).toHaveBeenCalledWith('access-token', 'video-session');
+  });
+
   it('joins the text queue, relays chat, handles Next and ignores stale session end events', async () => {
     const socket = new FakeSocket();
     const user = userEvent.setup();

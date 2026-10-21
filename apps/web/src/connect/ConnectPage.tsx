@@ -14,21 +14,24 @@ type ChatMessage = {
   mine: boolean;
   status?: 'sending' | 'sent' | 'failed';
 };
-type MatchFound = { sessionId: string; partner: { alias: string }; mode: 'text' };
+type MatchFound = { sessionId: string; partner: { alias: string }; mode: 'text' | 'video' };
 
 export function ConnectPage({
   accessToken,
   api,
   socketFactory = createConnectSocket,
+  videoEnabled = false,
 }: {
   accessToken: string;
   api: PoshaApiClient;
   socketFactory?: (accessToken: string) => ConnectClientSocket;
+  videoEnabled?: boolean;
 }) {
   const socketRef = useRef<ConnectClientSocket | null>(null);
   const nextRequested = useRef(false);
   const activeSessionId = useRef('');
   const leavingSession = useRef(false);
+  const previewRef = useRef<HTMLVideoElement | null>(null);
   const [state, setState] = useState<'idle' | 'connecting' | 'queued' | 'matched'>('idle');
   const [position, setPosition] = useState<number | null>(null);
   const [partner, setPartner] = useState('');
@@ -38,6 +41,16 @@ export function ConnectPage({
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [safetyAction, setSafetyAction] = useState<ConnectSafetyAction | null>(null);
+  const [mode, setMode] = useState<'text' | 'video'>('text');
+  const [videoConsentSubmitted, setVideoConsentSubmitted] = useState(false);
+  const [videoConsentAccepted, setVideoConsentAccepted] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (previewRef.current) previewRef.current.srcObject = localStream;
+    return () => localStream?.getTracks().forEach((track) => track.stop());
+  }, [localStream]);
 
   useEffect(
     () => () => {
@@ -47,7 +60,7 @@ export function ConnectPage({
     [],
   );
 
-  function startQueue() {
+  function startQueue(queueMode: 'text' | 'video' = 'text') {
     setError('');
     setNotice('');
     setState('connecting');
@@ -62,7 +75,7 @@ export function ConnectPage({
     socketRef.current = socket;
     socket.on('connect', () => {
       setState('queued');
-      socket.emit('queue.join', { mode: 'text', interests: [], lang: 'en' });
+      socket.emit('queue.join', { mode: queueMode, interests: [], lang: 'en' });
       socket.emit('heartbeat', {});
     });
     socket.on('connect_error', () => {
@@ -78,6 +91,10 @@ export function ConnectPage({
       setSessionId('');
       setPartner('');
       setMessages([]);
+      setVideoConsentAccepted(false);
+      setVideoConsentSubmitted(false);
+      setVideoReady(false);
+      setLocalStream(null);
       setState('idle');
       setError('The connection was interrupted. Start a new chat when you are ready.');
     });
@@ -95,10 +112,27 @@ export function ConnectPage({
       activeSessionId.current = payload.sessionId;
       setSessionId(payload.sessionId);
       setPartner(payload.partner.alias);
+      setMode(payload.mode);
+      setVideoConsentSubmitted(false);
+      setVideoConsentAccepted(false);
+      setVideoReady(false);
       setMessages([]);
       setState('matched');
       setPosition(null);
-      setNotice('You’re connected. Keep personal contact details private.');
+      setNotice(
+        payload.mode === 'video'
+          ? 'Review the video safety notice. Your camera stays off unless both people agree.'
+          : 'You’re connected. Keep personal contact details private.',
+      );
+    });
+    socket.on('video.consent.state', (payload: { sessionId: string; mutualAccepted: boolean }) => {
+      if (payload.sessionId !== activeSessionId.current || !payload.mutualAccepted) return;
+      setVideoConsentSubmitted(true);
+      setVideoConsentAccepted(true);
+      void api
+        .getConnectVideoToken(accessToken, payload.sessionId)
+        .then(() => setVideoReady(true))
+        .catch(() => setError('Video setup is unavailable right now. You can leave this chat.'));
     });
     socket.on('chat.message', (payload: { id: string; from: string; body: string }) => {
       setMessages((current) => [
@@ -122,6 +156,7 @@ export function ConnectPage({
         setSessionId('');
         setPartner('');
         setMessages([]);
+        setLocalStream(null);
         if (nextRequested.current) {
           setState('queued');
           setNotice('Finding another conversation…');
@@ -202,6 +237,7 @@ export function ConnectPage({
       setSessionId('');
       setPartner('');
       setMessages([]);
+      setLocalStream(null);
       setState('idle');
       setNotice('You left the conversation.');
     }, 1_000);
@@ -227,9 +263,40 @@ export function ConnectPage({
     socketRef.current?.emit('chat.send', { sessionId, body, clientMsgId });
   }
 
+  function submitVideoConsent(accept: boolean) {
+    if (!sessionId) return;
+    if (accept) {
+      setVideoConsentSubmitted(true);
+      setNotice('Waiting for both people to agree before video can start…');
+    } else setNotice('Declining video and ending this conversation…');
+    socketRef.current?.emit('video.consent', { sessionId, accept });
+  }
+
+  async function enableCamera() {
+    if (!sessionId || !videoReady) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Camera and microphone access is unavailable in this browser.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (activeSessionId.current !== sessionId) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      setLocalStream(stream);
+      setError('');
+      setNotice('Camera preview is local to you. Live video is not available in this client yet.');
+    } catch {
+      setError(
+        'Camera or microphone permission was not granted. You can leave this chat at any time.',
+      );
+    }
+  }
+
   return (
     <section className="connect-page" aria-labelledby="connect-title">
-      <p className="eyebrow">POSHA Connect · text only</p>
+      <p className="eyebrow">POSHA Connect{videoEnabled ? '' : ' · text only'}</p>
       <h1 id="connect-title">Connect with a verified adult</h1>
       {state === 'idle' ? (
         <div className="feature-card">
@@ -240,7 +307,12 @@ export function ConnectPage({
           <p className="fine-print">
             Keep contact details private. Respect boundaries. No explicit content.
           </p>
-          <Button onClick={startQueue}>Start text chat</Button>
+          <Button onClick={() => startQueue('text')}>Start text chat</Button>
+          {videoEnabled ? (
+            <Button variant="secondary" onClick={() => startQueue('video')}>
+              Find video chat
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {state === 'connecting' ? (
@@ -265,11 +337,14 @@ export function ConnectPage({
         </div>
       ) : null}
       {state === 'matched' ? (
-        <div className="connect-session" aria-label="Text conversation">
+        <div
+          className="connect-session"
+          aria-label={mode === 'video' ? 'Video conversation' : 'Text conversation'}
+        >
           <header className="connect-session__header">
             <div>
               <h2>{partner}</h2>
-              <p>Verified adult · text chat</p>
+              <p>Verified adult · {mode === 'video' ? 'video chat' : 'text chat'}</p>
             </div>
             <div className="connect-session__actions">
               <Button
@@ -288,44 +363,101 @@ export function ConnectPage({
               </Button>
             </div>
           </header>
-          <ol className="connect-messages" aria-label="Messages" aria-live="polite">
-            {messages.length === 0 ? (
-              <li className="connect-empty">
-                Say hello. Keep the conversation respectful and non-explicit.
-              </li>
-            ) : null}
-            {messages.map((message) => (
-              <li
-                className={message.mine ? 'connect-message is-mine' : 'connect-message'}
-                key={message.id}
-              >
-                <span className="connect-message__from">{message.from}</span>
-                <p>{message.body}</p>
-                {message.status === 'sending' ? (
-                  <span className="connect-message__status">Sending…</span>
-                ) : null}
-                {message.status === 'failed' ? (
-                  <span className="connect-message__status">Not sent</span>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-          <form className="connect-composer" onSubmit={sendMessage}>
-            <TextArea
-              aria-label="Your message"
-              label="Message"
-              maxLength={1000}
-              onChange={(event) => setDraft(event.currentTarget.value)}
-              value={draft}
-            />
-            <Button type="submit" disabled={!draft.trim() || leavingSession.current}>
-              Send
-            </Button>
-          </form>
+          {mode === 'video' && !videoConsentAccepted && !videoConsentSubmitted ? (
+            <div className="feature-card" aria-label="Video consent">
+              <p>
+                Video is optional. Your camera and microphone stay off until both people accept. You
+                can decline or leave at any time. Keep the conversation non-explicit and report
+                anything that makes you uncomfortable.
+              </p>
+              <Button disabled={leavingSession.current} onClick={() => submitVideoConsent(true)}>
+                Accept video
+              </Button>
+              <Button variant="secondary" onClick={() => submitVideoConsent(false)}>
+                Decline video
+              </Button>
+            </div>
+          ) : null}
+          {mode === 'video' && videoConsentSubmitted && !videoConsentAccepted ? (
+            <div className="connect-status" role="status">
+              <p>Waiting for both people to agree before video can start…</p>
+            </div>
+          ) : null}
+          {mode === 'video' && videoConsentAccepted ? (
+            <div className="connect-status" role="status">
+              <p>
+                {videoReady
+                  ? 'Both people agreed. Your camera and microphone remain off until you allow access.'
+                  : 'Both people agreed. Preparing secure video room access…'}
+              </p>
+              {videoReady && !localStream ? (
+                <Button onClick={() => void enableCamera()} disabled={leavingSession.current}>
+                  Enable camera and microphone
+                </Button>
+              ) : null}
+              {localStream ? (
+                <>
+                  <video
+                    ref={previewRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    aria-label="Your local camera preview"
+                  />
+                  <p className="fine-print">
+                    Local preview only. Live video is not available in this client yet.
+                  </p>
+                  <Button variant="secondary" onClick={() => setLocalStream(null)}>
+                    Turn off camera and microphone
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {mode === 'text' ? (
+            <ol className="connect-messages" aria-label="Messages" aria-live="polite">
+              {messages.length === 0 ? (
+                <li className="connect-empty">
+                  Say hello. Keep the conversation respectful and non-explicit.
+                </li>
+              ) : null}
+              {messages.map((message) => (
+                <li
+                  className={message.mine ? 'connect-message is-mine' : 'connect-message'}
+                  key={message.id}
+                >
+                  <span className="connect-message__from">{message.from}</span>
+                  <p>{message.body}</p>
+                  {message.status === 'sending' ? (
+                    <span className="connect-message__status">Sending…</span>
+                  ) : null}
+                  {message.status === 'failed' ? (
+                    <span className="connect-message__status">Not sent</span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          ) : null}
+          {mode === 'text' ? (
+            <form className="connect-composer" onSubmit={sendMessage}>
+              <TextArea
+                aria-label="Your message"
+                label="Message"
+                maxLength={1000}
+                onChange={(event) => setDraft(event.currentTarget.value)}
+                value={draft}
+              />
+              <Button type="submit" disabled={!draft.trim() || leavingSession.current}>
+                Send
+              </Button>
+            </form>
+          ) : null}
           <div className="connect-session__footer">
-            <Button disabled={leavingSession.current} onClick={nextSession} variant="secondary">
-              Next person
-            </Button>
+            {mode === 'text' ? (
+              <Button disabled={leavingSession.current} onClick={nextSession} variant="secondary">
+                Next person
+              </Button>
+            ) : null}
             <Button disabled={leavingSession.current} onClick={leaveSession} variant="danger">
               Leave chat
             </Button>

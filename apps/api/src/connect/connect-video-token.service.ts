@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ConnectSessionSchema, ErrorCodes } from '@posha/shared';
 import { FeatureFlagsService } from '../flags/feature-flags.service.js';
-import type { ConnectSessionStore } from './connect-session.store.js';
+import type { ConnectSessionStore, ConnectVideoConsentRecord } from './connect-session.store.js';
+import { ConnectRealtimeError } from './connect-realtime.port.js';
 import type { SfuProvider } from './connect-sfu.provider.js';
 
 export interface VideoConsentVerifier {
@@ -10,12 +11,40 @@ export interface VideoConsentVerifier {
 }
 
 export const VIDEO_CONSENT_VERIFIER = Symbol('VIDEO_CONSENT_VERIFIER');
+export const CONNECT_VIDEO_CONSENT_SERVICE = Symbol('CONNECT_VIDEO_CONSENT_SERVICE');
 
-/** Until P3-02 persists both consent choices, production wiring denies token issuance. */
+/** Explicit deny adapter for deployments and tests that have no consent store. */
 export class DenyVideoConsentVerifier implements VideoConsentVerifier {
   async hasMutualConsent(_sessionId: string): Promise<boolean> {
     void _sessionId;
     return false;
+  }
+}
+
+export class SessionVideoConsentVerifier implements VideoConsentVerifier {
+  constructor(private readonly sessions: ConnectSessionStore) {}
+
+  hasMutualConsent(sessionId: string): Promise<boolean> {
+    return this.sessions.hasMutualVideoConsent(sessionId);
+  }
+}
+
+export class ConnectVideoConsentService {
+  constructor(
+    private readonly sessions: ConnectSessionStore,
+    private readonly featureFlags: FeatureFlagsService,
+  ) {}
+
+  async record(
+    userId: string,
+    sessionId: string,
+    accepted: boolean,
+  ): Promise<ConnectVideoConsentRecord> {
+    if (!this.featureFlags.isEnabled('GATE:RANDOM_VIDEO'))
+      throw new ConnectRealtimeError(ErrorCodes.GATE_DISABLED);
+    const record = await this.sessions.recordVideoConsent(sessionId, userId, accepted);
+    if (!record) throw new ConnectRealtimeError(ErrorCodes.SESSION_NOT_FOUND);
+    return record;
   }
 }
 

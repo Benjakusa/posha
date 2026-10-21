@@ -2,7 +2,7 @@ import type { RedisClientType } from 'redis';
 
 export interface QueueEntry {
   userId: string;
-  mode: 'text';
+  mode: 'text' | 'video';
   interests: readonly string[];
   lang: string;
   countryPref?: string;
