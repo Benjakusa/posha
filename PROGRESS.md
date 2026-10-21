@@ -2,7 +2,7 @@
 Last updated: 2026-10-21 by Codex
 Current phase: Phase 3
 Current task: P3-04
-Next task: P3-05
+Next task: P3-04
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -47,6 +47,7 @@ Next task: P3-05
 | P3-01 | Done | 2026-10-21 | `3c29c54` | Video token tests (5); API suite excluding sandbox-blocked localhost liveness: 97 passed, 9 PostgreSQL tests skipped. Workspace lint, typecheck, build, format, seed, and spec-coverage pass. | Added a LiveKit-compatible room token provider, `FakeSfu`, L2/active-session/member/gate checks, 60-second room-scoped tokens, and self-hosted TURN/TLS+UDP configuration guidance. Production token issuance now uses P3-02's persisted mutual-consent verifier. `GATE:RANDOM_VIDEO` stays OFF; no LiveKit server or TURN network test was available. |
 | P3-02 | Done | 2026-10-21 | `78dc703` | API consent/token tests (6); web Connect flow tests (3); workspace lint and typecheck pass; Prettier and `git diff --check` pass. | Added durable per-participant consent in the session store, gate-checked Socket.IO consent events, video-mode matchmaking, and token issuance only after mutual acceptance. The gated UI leaves devices off until both accept, then requests browser camera/microphone permission and provides a local preview with stop controls. Live media transport is not connected in this client yet. `GATE:RANDOM_VIDEO` stays OFF. |
 | P3-03 | Done | 2026-10-21 | `00c6db3` | Video/classifier tests (10); migration contract tests (11); shared tests (12); web Connect flow tests (3); workspace lint/typecheck/build/format and spec-coverage pass. PostgreSQL migration not applied because `TEST_DATABASE_URL` is unset. | Added a 3-second low-resolution client frame sampler, strict size/rate limits, active-session/mutual-consent checks, injectable classifier, and a reversible account/session flag table containing verdict metadata only. High-confidence results end both sides; classifier/storage failures close the call. No frame bytes are persisted. A real classifier and video transport are not configured, so token issuance stays unavailable and `GATE:RANDOM_VIDEO` remains OFF. |
+| P3-04 | Blocked-External | 2026-10-21 | `PENDING` | Existing video UI has Report/Block/Leave actions; transport reconnect behavior is not implemented. | Reconnect requires an SFU browser client and reachable media transport. `livekit-client` is absent from the lockfile and package cache; its earlier install attempt failed with registry DNS `EAI_AGAIN`. P3-04 remains current until the dependency and a testable SFU environment are available. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
@@ -54,6 +55,7 @@ Next task: P3-05
 | P1-08 | Staff SSO provider selection and server endpoints for staff session, audit, and gate administration | 2026-10-20 |
 | P2-07 | Staff SSO provider and authorized server endpoints for moderation queue, actions, appeals, and audit | 2026-10-21 |
 | P2-09 | k6 runtime and dedicated staging API/Redis/PostgreSQL with 200/1,000 unique verified test-account tokens | 2026-10-21 |
+| P3-04 | `livekit-client` dependency access and a reachable test SFU for reconnect behavior | 2026-10-21 |
 | P1-09 | Email, SMS, and push delivery provider selection and credentials | 2026-10-20 |
 |---|---|---|
 
