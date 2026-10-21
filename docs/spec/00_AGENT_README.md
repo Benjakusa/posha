@@ -1,4 +1,7 @@
 # POSHA — Agent Operating Manual (READ FIRST)
+> ⚠ **TRACK B (simple app) supersedes product scope; safety rules unchanged.**
+
+
 
 You are the **Site Architect and lead implementer** for POSHA, an adults-only (18+), mobile-first platform with three pillars:
 

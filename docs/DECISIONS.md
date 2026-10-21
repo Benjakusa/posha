@@ -75,3 +75,25 @@ The member flow uses the `/connect` Socket.IO namespace with the short-lived acc
 ## Random video consent and sampled-frame moderation (P3-02/P3-03)
 
 Consent is persisted per session participant; video tokens are issued only when both participants have accepted and a video-frame classifier is configured. Browser camera/microphone access requires a separate user action after mutual consent. The client samples a low-resolution JPEG every three seconds only after permission, sends at most 4,800 decoded bytes per sample, and does not retain frame data. The server never writes frame bytes to storage; high-confidence classifier results create a durable account/session moderation flag containing category, confidence, and classifier version, then end the call. Missing or failed classifier/storage dependencies close the call and fail closed. The classifier integration defaults unavailable and `GATE:RANDOM_VIDEO` stays OFF.
+
+## 2026-10-21 — Guest access and adult declaration
+
+The owner confirmed that guest text-chat users must pass server-side L2 age assurance and that an 18+ acknowledgement should open the guest homepage without OTP. The acknowledgement does not authorize chat. Guest sessions need a server-issued identity so Connect can enforce age, account state, rate limits, reports, and blocks; no guest auth/API exists yet, so guest chat remains unavailable until that is implemented. Random video remains unavailable while `GATE:RANDOM_VIDEO` is OFF and its prerequisites are unmet. OTP entry is exposed as creator sign-in; creator-only registration still needs creator-onboarding work.
+
+The owner has since described the 18+ click as the adult verification itself. This acknowledgement remains sufficient to open the guest homepage, but the binding safety spec still requires server-side L2 age assurance for random chat; this request does not alter that authorization rule. The guest homepage has been restyled to show chat and video availability clearly.
+
+The owner requests that strangers be able to use chats and videos. Keep the current guest chat lock until guest sessions can complete server-side L2 assurance. Keep random video locked while `GATE:RANDOM_VIDEO` is OFF; an 18+ acknowledgement cannot satisfy the classifier, moderation staffing, legal sign-off, and abuse-runbook prerequisites. The safe implementation path is OTP-free guest sessions with L2-gated text chat; video stays unavailable pending gate approval.
+
+
+## 2026-10-21 — Track B: Simple app decisions
+
+**Video transport.** Use browser WebRTC (RTCPeerConnection) peer-to-peer with signalling over the existing Socket.IO `/connect` namespace, with STUN/TURN from env (`ICE_SERVERS_JSON`). This removes the LiveKit dependency blocker. Keep the SFU token code but do not require it; `livekit-client` stays absent.
+
+**Follower.** A follower = a user with at least 1 active paid subscription to any creator. Guest video cap = `GUEST_VIDEO_MAX_SECONDS=120`; follower cap = `FOLLOWER_VIDEO_MAX_SECONDS=1800`.
+
+**Payments.** Payments sit behind a `PaymentProvider` interface. Ship a `FakeProvider` (dev/test, "Simulate payment") and an M-Pesa (Daraja STK Push) sandbox adapter selected by env. Entitlements are granted ONLY from a verified, idempotent provider callback; the browser "success" screen never grants access.
+
+**Animations.** Use `motion` (Framer Motion, import from `motion/react`) if it installs; if the registry is unreachable, fall back to CSS keyframes + IntersectionObserver. Do not block on this.
+
+**Storage.** Add `STORAGE_DRIVER=memory|postgres`. Default `memory` so the app runs with zero Docker; Postgres migrations must still exist and stay reversible.`
+

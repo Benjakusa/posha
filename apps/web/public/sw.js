@@ -1,6 +1,17 @@
 const CACHE_NAME = 'posha-shell-v1';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg'];
 
+function cacheSuccessfulResponse(request, response) {
+  if (!response.ok) return;
+
+  // Clone before awaiting caches.open(); the page may consume the original body immediately.
+  const copy = response.clone();
+  void caches
+    .open(CACHE_NAME)
+    .then((cache) => cache.put(request, copy))
+    .catch(() => {});
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -39,8 +50,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.ok)
-            void caches.open(CACHE_NAME).then((cache) => cache.put('/', response.clone()));
+          cacheSuccessfulResponse('/', response);
           return response;
         })
         .catch(async () => (await caches.match('/')) || Response.error()),
@@ -53,8 +63,7 @@ self.addEventListener('fetch', (event) => {
       (cached) =>
         cached ||
         fetch(request).then((response) => {
-          if (response.ok)
-            void caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+          cacheSuccessfulResponse(request, response);
           return response;
         }),
     ),

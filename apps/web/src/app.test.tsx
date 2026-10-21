@@ -46,6 +46,11 @@ function renderAt(path: string, api: PoshaApiClient) {
 async function signInThroughOtp(api: PoshaApiClient) {
   const user = userEvent.setup();
   renderAt('/auth/identity', api);
+  await screen.findByRole('heading', { name: 'Find a friendly conversation.' });
+  await user.click(screen.getByRole('checkbox', { name: 'I confirm that I am 18 or older' }));
+  await screen.findByRole('heading', { name: 'Welcome to POSHA' });
+  await user.click(screen.getByRole('button', { name: 'Creator sign in' }));
+  await screen.findByRole('heading', { name: 'Sign in' });
   await user.type(
     screen.getByRole('textbox', { name: 'Email or phone number' }),
     'adult@example.test',
@@ -57,10 +62,72 @@ async function signInThroughOtp(api: PoshaApiClient) {
   return user;
 }
 
-beforeEach(() => sessionStorage.clear());
+beforeEach(() => {
+  sessionStorage.clear();
+  localStorage.clear();
+});
 afterEach(cleanup);
 
 describe('POSHA web shell', () => {
+  it('requires an 18+ confirmation before opening the guest homepage', async () => {
+    renderAt('/auth/identity', fakeApi());
+    expect(
+      await screen.findByRole('heading', { name: 'Find a friendly conversation.' }),
+    ).toBeTruthy();
+    expect(
+      (
+        screen.getByRole('checkbox', {
+          name: 'I confirm that I am 18 or older',
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(false);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
+
+  it('opens the guest homepage after confirmation without requesting an OTP', async () => {
+    const api = fakeApi();
+    const user = userEvent.setup();
+    renderAt('/welcome', api);
+    await user.click(screen.getByRole('checkbox', { name: 'I confirm that I am 18 or older' }));
+    expect(await screen.findByRole('heading', { name: 'Welcome to POSHA' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Text chat unavailable' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Creator sign in' })).toBeTruthy();
+    expect(api.requestOtp).not.toHaveBeenCalled();
+  });
+
+  it('remembers the 18+ confirmation after the app is reopened', async () => {
+    const user = userEvent.setup();
+    const api = fakeApi();
+    renderAt('/welcome', api);
+    await user.click(screen.getByRole('checkbox', { name: 'I confirm that I am 18 or older' }));
+    expect(await screen.findByRole('heading', { name: 'Welcome to POSHA' })).toBeTruthy();
+    cleanup();
+
+    renderAt('/welcome', api);
+    expect(await screen.findByRole('heading', { name: 'Welcome to POSHA' })).toBeTruthy();
+    expect(screen.queryByRole('checkbox', { name: 'I confirm that I am 18 or older' })).toBeNull();
+  });
+
+  it('keeps the guest homepage accessible', async () => {
+    localStorage.setItem('posha:adult-confirmed', 'true');
+    const { container } = renderAt('/home', fakeApi());
+    expect(await screen.findByRole('heading', { name: 'Welcome to POSHA' })).toBeTruthy();
+    const results = await axe.run(container, {
+      rules: {
+        'color-contrast': { enabled: false },
+        'label-content-name-mismatch': { enabled: false },
+      },
+    });
+    expect(results.violations).toEqual([]);
+  });
+
+  it('keeps OTP sign-in behind the creator entry point', async () => {
+    localStorage.setItem('posha:adult-confirmed', 'true');
+    renderAt('/auth/identity', fakeApi());
+    expect(await screen.findByRole('heading', { name: 'Welcome to POSHA' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
+
   it('[P1-07] keeps member routes behind authentication and verified adult status', () => {
     renderAt('/home', fakeApi());
     expect(screen.getByRole('heading', { name: 'Find a friendly conversation.' })).toBeTruthy();

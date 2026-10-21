@@ -19,6 +19,8 @@ import { ConnectPage } from './connect/ConnectPage.js';
 interface SessionContextValue {
   accessToken: string | null;
   setAccessToken: (value: string | null) => void;
+  adultConfirmed: boolean;
+  setAdultConfirmed: (value: boolean) => void;
   ageStatus: AgeStatus['status'] | null;
   setAgeStatus: (value: AgeStatus['status'] | null) => void;
   api: PoshaApiClient;
@@ -29,6 +31,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 function clearOnboardingStorage() {
   sessionStorage.removeItem('posha:pending-identity');
   sessionStorage.removeItem('posha:alias');
+  sessionStorage.removeItem('posha:creator-auth-intent');
 }
 
 function useSession(): SessionContextValue {
@@ -46,7 +49,8 @@ function PublicLayout() {
 }
 
 function WelcomePage() {
-  const navigate = useNavigate();
+  const { adultConfirmed, setAdultConfirmed } = useSession();
+  if (adultConfirmed) return <Navigate to="/home" replace />;
   return (
     <section className="welcome-card" aria-labelledby="welcome-title">
       <div className="brand-mark" aria-hidden="true">
@@ -54,9 +58,17 @@ function WelcomePage() {
       </div>
       <Badge variant="adult">Adults 18+</Badge>
       <h1 id="welcome-title">Find a friendly conversation.</h1>
-      <p>Meet verified adults for text chats, with clear safety tools and control at every step.</p>
-      <Button onClick={() => navigate('/auth/identity')}>Continue with email or phone</Button>
-      <p className="fine-print">You’ll verify your age before entering member areas.</p>
+      <p>POSHA is for adults. Confirm you are 18 or older to continue.</p>
+      <Checkbox
+        checked={adultConfirmed}
+        label="I confirm that I am 18 or older"
+        onChange={(event) => {
+          const confirmed = event.currentTarget.checked;
+          if (confirmed) localStorage.setItem('posha:adult-confirmed', 'true');
+          else localStorage.removeItem('posha:adult-confirmed');
+          setAdultConfirmed(confirmed);
+        }}
+      />
     </section>
   );
 }
@@ -84,11 +96,11 @@ function IdentityPage() {
   }
 
   return (
-    <section className="form-card" aria-labelledby="identity-title">
+    <section className="form-card form-card--centered" aria-labelledby="identity-title">
       <Link className="back-link" to="/welcome">
         ← Back
       </Link>
-      <h1 id="identity-title">Sign in or create an account</h1>
+      <h1 id="identity-title">Sign in</h1>
       <p>We’ll send a one-time code to your email or phone. Your contact details stay private.</p>
       <form onSubmit={submit}>
         <Input
@@ -349,11 +361,37 @@ function SafetyPage() {
 }
 
 function RequireVerifiedAdult() {
-  const { accessToken, ageStatus } = useSession();
+  const { accessToken, ageStatus, adultConfirmed } = useSession();
   const location = useLocation();
-  if (!accessToken) return <Navigate to="/welcome" replace state={{ from: location.pathname }} />;
+  if (!adultConfirmed)
+    return <Navigate to="/welcome" replace state={{ from: location.pathname }} />;
+  if (!accessToken) {
+    return location.pathname === '/home' ? (
+      <GuestHomePage />
+    ) : (
+      <Navigate to="/home" replace state={{ from: location.pathname }} />
+    );
+  }
   if (ageStatus !== 'passed') return <Navigate to="/age" replace />;
   return <MemberLayout />;
+}
+
+function RequireAdultConfirmation() {
+  const { adultConfirmed } = useSession();
+  const location = useLocation();
+  return adultConfirmed ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/welcome" replace state={{ from: location.pathname }} />
+  );
+}
+
+function RequireCreatorAuthIntent() {
+  return sessionStorage.getItem('posha:creator-auth-intent') === 'true' ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/home" replace />
+  );
 }
 
 const tabs = [
@@ -429,6 +467,69 @@ function HomePage() {
         Browse profiles
       </Link>
     </section>
+  );
+}
+
+function GuestHomePage() {
+  const navigate = useNavigate();
+  function openCreatorAuth() {
+    sessionStorage.setItem('posha:creator-auth-intent', 'true');
+    navigate('/auth/identity');
+  }
+  return (
+    <div className="guest-home-shell">
+      <header className="guest-home-header">
+        <Link className="wordmark" to="/home" aria-label="POSHA home">
+          POSHA
+        </Link>
+        <Button variant="secondary" onClick={openCreatorAuth}>
+          Creator sign in
+        </Button>
+      </header>
+      <main className="guest-home-main">
+        <section className="guest-home-hero" aria-labelledby="guest-home-title">
+          <div className="guest-home-hero__copy">
+            <p className="eyebrow">A calmer way to connect</p>
+            <h1 id="guest-home-title">Welcome to POSHA</h1>
+            <p>Meet new people for thoughtful conversations, at your own pace.</p>
+            <Badge variant="adult">18+ confirmed</Badge>
+          </div>
+          <div className="guest-home-art" aria-hidden="true">
+            <span className="guest-home-art__orbit guest-home-art__orbit--one" />
+            <span className="guest-home-art__orbit guest-home-art__orbit--two" />
+            <span className="guest-home-art__spark">✦</span>
+          </div>
+        </section>
+        <section className="guest-home-grid" aria-label="Ways to connect">
+          <article className="guest-feature-card guest-feature-card--chat">
+            <span className="guest-feature-card__icon" aria-hidden="true">
+              ◌
+            </span>
+            <p className="guest-feature-card__eyebrow">POSHA Connect</p>
+            <h2>Text chats</h2>
+            <p>Meet someone new in a one-to-one conversation.</p>
+            <Button disabled aria-describedby="guest-chat-unavailable">
+              Text chat unavailable
+            </Button>
+            <p className="guest-feature-card__status" id="guest-chat-unavailable">
+              Chat access isn’t available for guests yet.
+            </p>
+          </article>
+          <article className="guest-feature-card guest-feature-card--video">
+            <span className="guest-feature-card__icon" aria-hidden="true">
+              ◉
+            </span>
+            <p className="guest-feature-card__eyebrow">Coming soon</p>
+            <h2>Video chats</h2>
+            <p>Face-to-face conversations will appear here when available.</p>
+            <Button disabled>Video chat unavailable</Button>
+          </article>
+        </section>
+      </main>
+      <footer className="guest-home-footer">
+        Browsing as a guest <span aria-hidden="true">·</span> No member account needed
+      </footer>
+    </div>
   );
 }
 
@@ -574,20 +675,35 @@ function PrivacyPage() {
 
 export function WebRoutes({ api }: { api: PoshaApiClient }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [adultConfirmed, setAdultConfirmed] = useState(
+    () => localStorage.getItem('posha:adult-confirmed') === 'true',
+  );
   const [ageStatus, setAgeStatus] = useState<AgeStatus['status'] | null>(null);
-  const session = { accessToken, setAccessToken, ageStatus, setAgeStatus, api };
+  const session = {
+    accessToken,
+    setAccessToken,
+    adultConfirmed,
+    setAdultConfirmed,
+    ageStatus,
+    setAgeStatus,
+    api,
+  };
   return (
     <SessionContext.Provider value={session}>
       <Routes>
         <Route element={<PublicLayout />}>
           <Route index element={<Navigate to="/welcome" replace />} />
           <Route path="welcome" element={<WelcomePage />} />
-          <Route path="auth/identity" element={<IdentityPage />} />
-          <Route path="auth/otp" element={<OtpPage />} />
-          <Route path="age" element={<AgeGatePage />} />
           <Route path="privacy-notice" element={<PrivacyNoticePage />} />
-          <Route path="onboarding/alias" element={<AliasPage />} />
-          <Route path="onboarding/safety" element={<SafetyPage />} />
+          <Route element={<RequireAdultConfirmation />}>
+            <Route element={<RequireCreatorAuthIntent />}>
+              <Route path="auth/identity" element={<IdentityPage />} />
+              <Route path="auth/otp" element={<OtpPage />} />
+            </Route>
+            <Route path="age" element={<AgeGatePage />} />
+            <Route path="onboarding/alias" element={<AliasPage />} />
+            <Route path="onboarding/safety" element={<SafetyPage />} />
+          </Route>
         </Route>
         <Route path="/" element={<RequireVerifiedAdult />}>
           <Route path="home" element={<HomePage />} />

@@ -4,6 +4,27 @@ Current phase: Phase 3
 Current task: P3-04
 Next task: P3-04
 
+## Track B — Simple App Build Prompt (stages S0–S10)
+
+> ⚠ Track B (simple app) supersedes product scope; safety rules unchanged.
+
+| Stage | Task | Commit | Tests | Notes |
+|---|---|---|---|---|
+| S0 — Orientation & baseline | B-S0-01..04 | docs-only | gates green | No code changes except docs. |
+| S1 — Backend actually runs | B-S1-01..05 | pending | Supertest boot | API serves real routes without Docker; web can call. |
+| S2 — Design foundation | B-S2-01..05 | pending | component+axe | Love-app theme, light/dark, motion kit. |
+| S3 — Guest age gate | B-S3-01..05 | pending | guest API + guards | Guest session + entry flow; no OTP. |
+| S4 — Home page (animated) | B-S4-01..07 | pending | catalogue API+axe | Animated home; STOP for visual review. |
+| S5 — Text chat (guest-ready) | B-S5-01..04 | pending | guest chat journey | Two browsers as guests chat. |
+| S6 — Video + 2-min limit | B-S6-01..06 | pending | timer+signalling | WebRTC, server-enforced 2-min limit. |
+| S7 — Subscriptions, payments | B-S7-01..07 | pending | property+idempotency | Payments, entitlements, followers. |
+| S8 — Profile = creator | B-S8-01..05 | pending | authz matrix | Creator signup, studio shell. |
+| S9 — Uploads, locked, lives | B-S9-01..06 | pending | locked-content tests | Uploads, locked playback, planned lives. |
+| S10 — Polish, QA, handover | B-S10-01..07 | pending | all gates + e2e | Security, performance, docs, handover. |
+
+**Current stage: S1**
+
+
 ## Phase status
 | Phase | Status | Milestone sign-off |
 |---|---|---|
@@ -71,6 +92,7 @@ Next task: P3-04
 6. OTP email/SMS delivery provider
 7. Staff SSO provider
 8. Email/SMS/push delivery providers
+9. Guest access implementation: owner requests chat and video for strangers. The root API currently mounts only health and feature flags; auth, age, and Connect modules are not wired into runtime. Implement OTP-free guest sessions with server-issued identity and L2 age assurance before text chat. A live age provider is not configured and `GATE:AGE_PROVIDER_LIVE` remains OFF; creator-only registration remains unfinished. Random video stays blocked while `GATE:RANDOM_VIDEO` is OFF and its prerequisites are unmet.
 
 ## Gates status (all must read OFF in prod until approved)
 AGE_PROVIDER_LIVE: OFF · RANDOM_VIDEO: OFF · CREATOR_MONETISATION: OFF · LIVE: OFF · PAYMENTS_LIVE: OFF · PRIVATE_SESSIONS: OFF · TIPS: OFF · GEO_*: OFF
