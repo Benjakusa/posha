@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
 Last updated: 2026-10-21 by Codex
 Current phase: Phase 2
-Current task: P2-08
-Next task: P2-09
+Current task: P2-09
+Next task: P3-01
 
 ## Phase status
 | Phase | Status | Milestone sign-off |
@@ -42,6 +42,7 @@ Next task: P2-09
 | P2-05 | Done | 2026-10-21 | `d27784d` | Report/block service tests (4), migration contract test, sheet tests (2 incl. axe); API/web suites, workspace lint/typecheck/build/format, seed, contrast, spec-coverage pass. PostgreSQL migration integration not run because `TEST_DATABASE_URL` is unset. | Added L2-guarded reports with reporter-scoped idempotency and encrypted, explicitly consented latest-50 snapshots; session-scoped block without partner ID exposure; accessible report/block sheets. |
 | P2-06 | Done | 2026-10-21 | `424e22b` | Connect UI journey (2 tests incl. axe); full API tests excluding sandbox-blocked liveness: 85 passed, 9 PostgreSQL integration tests skipped; web suite (9 passed); workspace lint/typecheck/build/format, seed, contrast, and spec-coverage pass. | Added authenticated Socket.IO text queue/chat UI, match alias display, messaging, Next/Leave, report/block sheets, queue/error/empty states, and race-safe Next handling. Video remains unavailable. |
 | P2-07 | Blocked-External | 2026-10-21 | `7cf531f` | Admin tests (8 incl. RBAC, urgent-first queue, action reason/expiry, second-reviewer rule); migration contract test (10); lint, typecheck, build, format, seed, contrast, and spec-coverage pass. Full suite: 89 API tests and all other suites pass; one API liveness test cannot bind localhost in this sandbox; 9 PostgreSQL tests skipped. | Added moderator reports/appeals UI, role-based read-only access, reason and expiry inputs, independent review prompt for permanent-ban appeals, idempotency-ready adapters, and reversible appeal/action-revocation schema. Live queue, action persistence, appeals, and action audit await the staff SSO/server-admin dependency tracked under P1-08. |
+| P2-08 | Done | 2026-10-21 | `df96fc1` | Metrics and matchmaking/safety/config tests pass (21 focused assertions); API suite excluding sandbox-blocked localhost liveness: 91 passed, 9 PostgreSQL tests skipped. Workspace lint, typecheck, build, and format pass; dashboard JSON parses. | Added authenticated Prometheus metrics for queue depth, per-participant match wait, started sessions, and newly created reports; provisioned Grafana panels for p50/p95 latency and reports per 1,000 sessions. Metrics contain no identifiers; scrape auth fails closed without a strong token. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
