@@ -1,17 +1,10 @@
 [
-  { "foreground": "white", "background": "maroon-950", "minimum": 4.5 },
-  { "foreground": "white", "background": "maroon-900", "minimum": 4.5 },
-  { "foreground": "white", "background": "maroon-700", "minimum": 4.5 },
-  { "foreground": "white", "background": "maroon-600", "minimum": 4.5 },
-  { "foreground": "white", "background": "red-600", "minimum": 4.5 },
-  { "foreground": "maroon-900", "background": "pink-300", "minimum": 4.5 },
-  { "foreground": "maroon-900", "background": "pink-100", "minimum": 4.5 },
-  { "foreground": "maroon-900", "background": "peach-400", "minimum": 4.5 },
-  { "foreground": "maroon-900", "background": "peach-200", "minimum": 4.5 },
-  { "foreground": "maroon-900", "background": "peach-100", "minimum": 4.5 },
-  { "foreground": "ink-900", "background": "cream-50", "minimum": 4.5 },
-  { "foreground": "ink-600", "background": "cream-50", "minimum": 4.5 },
-  { "foreground": "ink-900", "background": "warning", "minimum": 4.5 },
-  { "foreground": "white", "background": "danger", "minimum": 4.5 },
-  { "foreground": "success", "background": "cream-50", "minimum": 3 }
+  { "foreground": "white", "background": "black", "minimum": 4.5 },
+  { "foreground": "white", "background": "black-soft", "minimum": 4.5 },
+  { "foreground": "white", "background": "red", "minimum": 4.5 },
+  { "foreground": "white", "background": "red-dark", "minimum": 4.5 },
+  { "foreground": "black", "background": "white", "minimum": 4.5 },
+  { "foreground": "red", "background": "white", "minimum": 4.5 },
+  { "foreground": "red-dark", "background": "white", "minimum": 4.5 },
+  { "foreground": "black", "background": "red", "minimum": 3 }
 ]

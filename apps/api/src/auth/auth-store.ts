@@ -21,6 +21,7 @@ export interface AuthSession {
   familyExpiresAt: Date;
   revokedAt: Date | null;
   mfaVerifiedAt: Date | null;
+  createdAt: Date;
 }
 
 export interface UserAuthState {

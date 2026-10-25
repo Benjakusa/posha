@@ -108,6 +108,65 @@ async function authenticate(gateway: ConnectGateway, socket: FakeSocket) {
 }
 
 describe('Connect realtime gateway (P2-02)', () => {
+  it('[B-S3-02] accepts only active guest sessions when the guest gate is enabled', async () => {
+    const authService = {
+      verifyAccessToken: vi.fn().mockResolvedValue({
+        sub: 'guest-1',
+        roles: ['guest'],
+        mfa: false,
+        iat: 1,
+        exp: 9_999_999_999,
+        chatAlias: 'Amber Fox',
+      }),
+    } as unknown as AuthService;
+    const flags = new FeatureFlagsService(
+      [{ key: 'GATE:GUEST_ACCESS', enabled: true }],
+      [
+        {
+          key: 'GATE:GUEST_ACCESS',
+          status: 'approved',
+          approvedBy: 'local-test',
+          evidenceRef: 'test-evidence',
+          approvedAt: new Date('2026-10-23T00:00:00.000Z'),
+        },
+      ],
+    );
+    const authStore = { getUserAuthState: vi.fn() } as unknown as AuthStore;
+    const guestSessions = { isActive: vi.fn().mockResolvedValue(true), aliasFor: vi.fn() };
+    const gateway = new ConnectGateway(
+      authService,
+      authStore,
+      flags,
+      new MemoryRateLimitStore(() => 1_000),
+      new MemoryConnectPresenceStore(() => 1_000),
+      {} as ConnectRealtimePort,
+      new ConnectSocketMatchEvents(),
+      undefined,
+      undefined,
+      undefined,
+      guestSessions,
+    );
+    const socket = new FakeSocket();
+    expect(await authenticate(gateway, socket)).toBeUndefined();
+    expect(authStore.getUserAuthState).not.toHaveBeenCalled();
+    expect(guestSessions.isActive).toHaveBeenCalledWith('guest-1');
+
+    const blocked = new ConnectGateway(
+      authService,
+      authStore,
+      new FeatureFlagsService(),
+      new MemoryRateLimitStore(() => 1_000),
+      new MemoryConnectPresenceStore(() => 1_000),
+      {} as ConnectRealtimePort,
+      new ConnectSocketMatchEvents(),
+      undefined,
+      undefined,
+      undefined,
+      guestSessions,
+    );
+    expect((await authenticate(blocked, new FakeSocket()))?.message).toBe('UNAUTHORIZED');
+  });
+
   it('rejects invalid tokens and under-age accounts during namespace middleware', async () => {
     const invalid = makeGateway({ age: 'L2' });
     const socket = new FakeSocket();

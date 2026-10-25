@@ -2,6 +2,13 @@ export interface OtpSession {
   accessToken: string;
 }
 
+export interface GuestSession {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresAt: string;
+  alias: string;
+}
+
 export interface AgeStatus {
   status: 'not_started' | 'pending' | 'passed' | 'failed' | 'expired' | 'manual_review';
   level: 'L0' | 'L2';
@@ -21,7 +28,30 @@ export interface ConnectVideoToken {
   expiresAt: string;
 }
 
+export interface CatalogHome {
+  heroUrl?: string;
+  lives: {
+    id: string;
+    title: string;
+    startsAt: string;
+    coverUrl?: string;
+    creator: { id: string; displayName: string; avatarUrl?: string; bannerUrl?: string };
+  }[];
+  videos: {
+    id: string;
+    title: string;
+    durationSec: number;
+    locked: boolean;
+    priceMinor: number;
+    creator: { id: string; displayName: string; avatarUrl?: string; bannerUrl?: string };
+    thumbnailUrl?: string;
+    placeholderUrl: string;
+  }[];
+}
+
 export interface PoshaApiClient {
+  createGuestSession(): Promise<GuestSession>;
+  getCatalogHome(accessToken?: string): Promise<CatalogHome>;
   requestOtp(identity: string): Promise<void>;
   verifyOtp(identity: string, code: string): Promise<OtpSession>;
   getAgeStatus(accessToken: string): Promise<AgeStatus>;
@@ -42,6 +72,7 @@ export class ApiRequestError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    override readonly cause?: unknown,
   ) {
     super(message);
     this.name = 'ApiRequestError';
@@ -51,11 +82,22 @@ export class ApiRequestError extends Error {
 export class HttpPoshaApiClient implements PoshaApiClient {
   constructor(
     private readonly baseUrl = import.meta.env.VITE_API_BASE_URL ?? '',
-    private readonly fetcher: typeof fetch = fetch,
+    private readonly fetcher: typeof fetch = globalThis.fetch.bind(globalThis),
   ) {}
 
   async requestOtp(identity: string): Promise<void> {
     await this.request('/auth/otp/request', { method: 'POST', body: JSON.stringify({ identity }) });
+  }
+
+  createGuestSession(): Promise<GuestSession> {
+    return this.request('/guest/session', {
+      method: 'POST',
+      body: JSON.stringify({ ageDeclaration: true, locale: navigator.language.slice(0, 16) }),
+    });
+  }
+
+  getCatalogHome(accessToken?: string): Promise<CatalogHome> {
+    return this.request('/catalog/home', {}, accessToken);
   }
 
   async verifyOtp(identity: string, code: string): Promise<OtpSession> {
@@ -76,10 +118,7 @@ export class HttpPoshaApiClient implements PoshaApiClient {
   async updatePreferences(accessToken: string, preferences: { locale: string }): Promise<void> {
     await this.request(
       '/me/preferences',
-      {
-        method: 'PATCH',
-        body: JSON.stringify(preferences),
-      },
+      { method: 'PATCH', body: JSON.stringify(preferences) },
       accessToken,
     );
   }
@@ -111,10 +150,7 @@ export class HttpPoshaApiClient implements PoshaApiClient {
   blockConnectSession(accessToken: string, sessionId: string): Promise<{ blocked: true }> {
     return this.request(
       `/connect/sessions/${encodeURIComponent(sessionId)}/block`,
-      {
-        method: 'POST',
-        body: JSON.stringify({}),
-      },
+      { method: 'POST', body: JSON.stringify({}) },
       accessToken,
     );
   }
@@ -142,10 +178,11 @@ export class HttpPoshaApiClient implements PoshaApiClient {
           ...init.headers,
         },
       });
-    } catch {
+    } catch (cause) {
       throw new ApiRequestError(
         'The service could not be reached. Check your connection and try again.',
         0,
+        cause,
       );
     }
     if (!response.ok) {
@@ -158,7 +195,7 @@ export class HttpPoshaApiClient implements PoshaApiClient {
           message = 'Complete the age check before continuing.';
         if (problem.code === 'RATE_LIMITED') message = 'Please wait a moment before trying again.';
       } catch {
-        // Keep the generic message when the service does not return problem details.
+        // generic message
       }
       throw new ApiRequestError(message, response.status);
     }

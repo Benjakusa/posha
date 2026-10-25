@@ -84,7 +84,6 @@ The owner has since described the 18+ click as the adult verification itself. Th
 
 The owner requests that strangers be able to use chats and videos. Keep the current guest chat lock until guest sessions can complete server-side L2 assurance. Keep random video locked while `GATE:RANDOM_VIDEO` is OFF; an 18+ acknowledgement cannot satisfy the classifier, moderation staffing, legal sign-off, and abuse-runbook prerequisites. The safe implementation path is OTP-free guest sessions with L2-gated text chat; video stays unavailable pending gate approval.
 
-
 ## 2026-10-21 — Track B: Simple app decisions
 
 **Video transport.** Use browser WebRTC (RTCPeerConnection) peer-to-peer with signalling over the existing Socket.IO `/connect` namespace, with STUN/TURN from env (`ICE_SERVERS_JSON`). This removes the LiveKit dependency blocker. Keep the SFU token code but do not require it; `livekit-client` stays absent.
@@ -96,4 +95,3 @@ The owner requests that strangers be able to use chats and videos. Keep the curr
 **Animations.** Use `motion` (Framer Motion, import from `motion/react`) if it installs; if the registry is unreachable, fall back to CSS keyframes + IntersectionObserver. Do not block on this.
 
 **Storage.** Add `STORAGE_DRIVER=memory|postgres`. Default `memory` so the app runs with zero Docker; Postgres migrations must still exist and stay reversible.`
-

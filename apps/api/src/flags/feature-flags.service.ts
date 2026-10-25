@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 export const COMPLIANCE_GATE_KEYS = [
+  'GATE:GUEST_ACCESS',
   'GATE:AGE_PROVIDER_LIVE',
   'GATE:RANDOM_VIDEO',
   'GATE:CREATOR_MONETISATION',

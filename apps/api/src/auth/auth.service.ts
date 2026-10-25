@@ -38,6 +38,7 @@ export interface AuthAccessClaims {
   mfa: boolean;
   iat: number;
   exp: number;
+  chatAlias?: string;
 }
 
 export interface AuthSessionTokens {
@@ -179,6 +180,7 @@ export class AuthService {
       familyExpiresAt,
       revokedAt: null,
       mfaVerifiedAt,
+      createdAt: now,
     };
     await this.store.createSession(session);
     return this.issueTokens(session, refreshToken, now);
@@ -233,16 +235,40 @@ export class AuthService {
       ) {
         throw new Error('Invalid token claims');
       }
+      const chatAlias = payload.chatAlias;
+      if (payload.roles.includes('guest') && (typeof chatAlias !== 'string' || !chatAlias.trim())) {
+        throw new Error('Invalid guest token claims');
+      }
       return {
         sub: payload.sub,
         roles: payload.roles as Role[],
         mfa: payload.mfa,
         iat: payload.iat,
         exp: payload.exp,
+        ...(typeof chatAlias === 'string' ? { chatAlias } : {}),
       };
     } catch {
       throw new AuthError('TOKEN_INVALID');
     }
+  }
+
+  async createGuestAccessToken(
+    guestId: string,
+    chatAlias: string,
+    now = this.now(),
+  ): Promise<{ accessToken: string; expiresAt: Date }> {
+    const issuedAt = Math.floor(now.getTime() / 1000);
+    const expiresAt = new Date((issuedAt + 4 * 60 * 60) * 1000);
+    const accessToken = await new SignJWT({ roles: ['guest'], mfa: false, chatAlias })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setIssuer(this.config.issuer)
+      .setAudience(this.config.audience)
+      .setSubject(guestId)
+      .setJti(this.makeId(now))
+      .setIssuedAt(issuedAt)
+      .setExpirationTime(issuedAt + 4 * 60 * 60)
+      .sign(this.config.accessTokenSecret);
+    return { accessToken, expiresAt };
   }
 
   async enrollTwoFactor(userId: string): Promise<{ secret: string; otpauthUrl: string }> {

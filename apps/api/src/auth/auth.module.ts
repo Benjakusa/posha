@@ -8,6 +8,7 @@ import type { AuthStore } from './auth-store.js';
 import { AuthService, OTP_DELIVERY } from './auth.service.js';
 import type { OtpDeliveryProvider } from './auth.service.js';
 import { PostgresAuthStore } from './postgres-auth.store.js';
+import { AuthController } from './auth.controller.js';
 
 export interface AuthModuleOptions {
   pool: Pool;
@@ -16,11 +17,12 @@ export interface AuthModuleOptions {
   store?: AuthStore;
 }
 
-@Module({})
+@Module({ controllers: [AuthController] })
 export class AuthModule {
   static register(options: AuthModuleOptions): DynamicModule {
     return {
       module: AuthModule,
+      controllers: [AuthController],
       providers: [
         { provide: AUTH_CONFIG, useValue: options.config },
         { provide: OTP_DELIVERY, useValue: options.delivery },

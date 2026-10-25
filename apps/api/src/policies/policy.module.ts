@@ -46,6 +46,10 @@ export class PolicyModule {
         RateLimitGuard,
       ],
       exports: [
+        AUTH_STORE,
+        AuthService,
+        FeatureFlagsService,
+        RATE_LIMIT_STORE,
         AuthGuard,
         AccountStatusGuard,
         AgeLevelGuard,

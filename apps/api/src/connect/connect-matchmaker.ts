@@ -16,6 +16,7 @@ import type { MatchingStore, QueueEntry, RecentSkipStore } from './matching-stor
 import type { UsersStore } from '../users/users-store.js';
 import type { ConnectMessageService } from './connect-message.service.js';
 import type { ConnectObservabilityService } from './connect-observability.service.js';
+import type { GuestSessionVerifier } from '../guest/guest-session.service.js';
 
 export interface ChatAliasResolver {
   getChatAlias(userId: string): Promise<string | null>;
@@ -66,6 +67,7 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
     private readonly messages?: ConnectMessageService,
     private readonly metrics?: ConnectObservabilityService,
     private readonly videoEnabled: () => boolean = () => false,
+    private readonly guestSessions?: GuestSessionVerifier,
   ) {}
 
   async joinQueue(userId: string, input: ConnectQueueJoin): Promise<QueueState> {
@@ -154,17 +156,16 @@ export class ConnectMatchmaker implements ConnectRealtimePort {
         const entries = await this.matching.listLane(lane, MAX_CANDIDATES_PER_LANE);
         const eligible: QueueEntry[] = [];
         for (const entry of entries) {
-          const [isOnline, state, activeSession] = await Promise.all([
+          const [isOnline, state, activeSession, isGuest] = await Promise.all([
             this.presence.isOnline(entry.userId),
             this.auth.getUserAuthState(entry.userId),
             this.sessions.findActiveForUser(entry.userId),
+            this.guestSessions?.isActive(entry.userId) ?? Promise.resolve(false),
           ]);
-          if (
-            !isOnline ||
-            activeSession !== null ||
-            state?.accountStatus !== 'active' ||
-            (state.ageLevel !== 'L2' && state.ageLevel !== 'L3')
-          ) {
+          const isVerifiedMember =
+            state?.accountStatus === 'active' &&
+            (state.ageLevel === 'L2' || state.ageLevel === 'L3');
+          if (!isOnline || activeSession !== null || (!isGuest && !isVerifiedMember)) {
             await this.matching.removeFromQueue(entry.userId);
             continue;
           }

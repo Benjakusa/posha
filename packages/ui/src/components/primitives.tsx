@@ -1,3 +1,4 @@
+// packages/ui/src/components/primitives.tsx
 import type {
   ButtonHTMLAttributes,
   HTMLAttributes,
@@ -7,12 +8,15 @@ import type {
   TextareaHTMLAttributes,
 } from 'react';
 import { forwardRef, useId } from 'react';
+import { Check, Sparkle, X } from '../icons.js';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   loading?: boolean;
+  icon?: ReactNode;
+  iconRight?: ReactNode;
 }
 
 export const Spinner = ({ label = 'Loading' }: { label?: string }) => (
@@ -24,6 +28,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     children,
     className = '',
     disabled,
+    icon,
+    iconRight,
     loading = false,
     type = 'button',
     variant = 'primary',
@@ -41,8 +47,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         disabled={disabled || loading}
         aria-busy={loading || undefined}
       >
-        {loading ? <span className="posha-spinner" aria-hidden="true" /> : null}
+        {loading ? <span className="posha-spinner" aria-hidden="true" /> : (icon ?? null)}
         {children}
+        {iconRight ?? null}
       </button>
       {loading ? (
         <span className="posha-sr-only" role="status">
@@ -192,7 +199,7 @@ export function Select({ error, hint, id, label, options, ...props }: SelectProp
       <select
         {...props}
         id={selectId}
-        className={`posha-input${error ? ' posha-input--error' : ''}`}
+        className={`posha-input posha-select${error ? ' posha-input--error' : ''}`}
         aria-invalid={error ? true : undefined}
         aria-describedby={description ? descriptionId : props['aria-describedby']}
       >
@@ -250,15 +257,12 @@ export function Badge({
   children: ReactNode;
   variant?: BadgeVariant;
 }) {
-  const symbols: Record<BadgeVariant, string> = {
-    verified: '✓',
-    live: '●',
-    adult: '18+',
-    neutral: '',
-  };
+  const showLiveDot = variant === 'live';
   return (
     <span className={`posha-badge posha-badge--${variant}`}>
-      {symbols[variant] ? <span aria-hidden="true">{symbols[variant]}</span> : null}
+      {variant === 'verified' ? <Check width={12} height={12} /> : null}
+      {showLiveDot ? <span className="posha-badge__dot" aria-hidden="true" /> : null}
+      {variant === 'adult' ? <span aria-hidden="true">18+</span> : null}
       {children}
     </span>
   );
@@ -304,7 +308,7 @@ export function EmptyState({
   const titleId = useId();
   return (
     <section className="posha-state" aria-labelledby={titleId}>
-      <span aria-hidden="true">◇</span>
+      <Sparkle width={22} height={22} aria-hidden="true" />
       <h2 id={titleId}>{title}</h2>
       {children ? <p>{children}</p> : null}
       {action}
@@ -323,7 +327,9 @@ export function ErrorState({
 }) {
   return (
     <section className="posha-state posha-state--error" role="alert">
-      <span aria-hidden="true">!</span>
+      <span className="posha-state__icon" aria-hidden="true">
+        <X width={18} height={18} />
+      </span>
       <h2>{title}</h2>
       {children ? <p>{children}</p> : null}
       {action}

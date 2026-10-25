@@ -6,7 +6,7 @@ POSHA is a mobile-first platform for adults, with age-gated accounts, private co
 
 Work follows the ordered backlog in [`docs/spec/09_BACKLOG.md`](docs/spec/09_BACKLOG.md). [`PROGRESS.md`](PROGRESS.md) is the source of truth for completed tasks, verification, and external blockers; [`docs/DECISIONS.md`](docs/DECISIONS.md) records implementation choices.
 
-The workspace currently includes a React/Vite web app and a NestJS API. The API bootstrap currently serves `GET /api/v1/health`; additional auth, Connect, safety, moderation, and video services are being implemented as modules and are not all mounted in the running application yet. Random video remains unavailable: `GATE:RANDOM_VIDEO` is OFF, live media transport is not connected, and P3-04 is waiting on the LiveKit browser client and a test SFU.
+The workspace includes a React/Vite web app and a NestJS API. Track B Stage S1 mounts the existing auth, age, profile, notification, and Connect modules. In local development, the API uses in-memory stores and does not need Docker or Postgres to boot; setting `DATABASE_URL` selects the existing Postgres stores. Development OTP codes are printed to the API terminal. Random video remains unavailable: `GATE:RANDOM_VIDEO` is OFF, live media transport is not connected, and P3-04 is waiting on the LiveKit browser client and a test SFU.
 
 ## Requirements
 
@@ -42,7 +42,7 @@ Vite prints the local web URL when it starts (usually `http://localhost:5173`). 
 VITE_API_BASE_URL=http://localhost:3000 corepack pnpm --filter @posha/web dev
 ```
 
-The current API bootstrap only mounts the health route, so auth and product flows that call other API routes will not work end to end yet.
+The OTP request endpoint is `POST /api/v1/auth/otp/request` with `{ "identity": "..." }`. Use the code printed in the API terminal with `POST /api/v1/auth/otp/verify`. Product flows that require a guest session or creator catalogue are introduced in later Track B stages and are not available yet.
 
 ## Local infrastructure
 

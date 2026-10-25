@@ -20,7 +20,7 @@ const preview: Preview = {
   decorators: [
     (Story, context) => (
       <div
-        className="ember-theme"
+        className="theme-surface"
         data-theme={context.globals.theme === 'light' ? 'light' : 'dark'}
       >
         <Story />

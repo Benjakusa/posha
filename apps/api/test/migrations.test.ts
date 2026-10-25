@@ -45,6 +45,10 @@ const connectMessageControlsMigrationPath = new URL(
   '../../../infra/db/migrations/009_connect_message_controls.sql',
   import.meta.url,
 );
+const catalogMigrationPath = new URL(
+  '../../../infra/db/migrations/013_catalog.sql',
+  import.meta.url,
+);
 
 describe('identity and core database migration', () => {
   it('[P1-01] contains reversible identity, safety, flag, and outbox schema', async () => {
@@ -197,5 +201,22 @@ describe('Connect video moderation migration', () => {
     expect(up).toContain('confidence >= 0 AND confidence <= 1');
     expect(up).not.toMatch(/\b(frame|image|video)\s+bytea\b/i);
     expect(down).toContain('DROP TABLE connect_video_moderation_flags');
+  });
+});
+
+describe('catalogue migration', () => {
+  it('[B-S4-01] seeds neutral catalogue content and rolls the schema back cleanly', async () => {
+    const migration = await readFile(catalogMigrationPath, 'utf8');
+    const [up, down] = migration.split('-- Down Migration');
+    expect(up).toContain('CREATE TABLE catalog_creators');
+    expect(up).toContain('CREATE TABLE catalog_videos');
+    expect(up).toContain('CREATE TABLE catalog_lives');
+    expect(up).toContain("WHERE status = 'published'");
+    expect(up).toContain("('creator-08', 'Sam Kiptoo')");
+    expect(up).toContain("('video-12', 'creator-04', 'Getting to know me'");
+    expect(up).toContain("('live-05', 'creator-05', 'Soft evening sounds'");
+    expect(down).toContain('DROP TABLE catalog_lives');
+    expect(down).toContain('DROP TABLE catalog_videos');
+    expect(down).toContain('DROP TABLE catalog_creators');
   });
 });

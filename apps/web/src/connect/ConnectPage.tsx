@@ -1,11 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Button, TextArea } from '@posha/ui';
+import { Link } from 'react-router';
+import {
+  Button,
+  Chip,
+  ChevronLeft,
+  Camera,
+  Heart,
+  Send,
+  Shield,
+  TextArea,
+  Video,
+  X,
+} from '@posha/ui';
 import type { PoshaApiClient } from '../api/client.js';
 import { ConnectSafetySheet } from './ConnectSafetySheet.js';
 import type { ConnectSafetyAction } from './ConnectSafetySheet.js';
 import { createConnectSocket } from './realtime.js';
 import type { ConnectClientSocket } from './realtime.js';
+import { useNavigate } from 'react-router';
 
 type ChatMessage = {
   id: string;
@@ -21,11 +34,13 @@ export function ConnectPage({
   api,
   socketFactory = createConnectSocket,
   videoEnabled = false,
+  initialMode = 'text',
 }: {
   accessToken: string;
   api: PoshaApiClient;
   socketFactory?: (accessToken: string) => ConnectClientSocket;
   videoEnabled?: boolean;
+  initialMode?: 'text' | 'video';
 }) {
   const socketRef = useRef<ConnectClientSocket | null>(null);
   const nextRequested = useRef(false);
@@ -41,11 +56,20 @@ export function ConnectPage({
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [safetyAction, setSafetyAction] = useState<ConnectSafetyAction | null>(null);
-  const [mode, setMode] = useState<'text' | 'video'>('text');
+  const [mode, setMode] = useState<'text' | 'video'>(initialMode);
+  const [preChatOpen, setPreChatOpen] = useState(
+    () => sessionStorage.getItem('posha:connect-safety-seen') !== 'true',
+  );
+  const [interests, setInterests] = useState<string[]>([]);
   const [videoConsentSubmitted, setVideoConsentSubmitted] = useState(false);
   const [videoConsentAccepted, setVideoConsentAccepted] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(120);
+  const [timeLimitOpen, setTimeLimitOpen] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [cameraOff, setCameraOff] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (previewRef.current) previewRef.current.srcObject = localStream;
@@ -103,7 +127,7 @@ export function ConnectPage({
     socketRef.current = socket;
     socket.on('connect', () => {
       setState('queued');
-      socket.emit('queue.join', { mode: queueMode, interests: [], lang: 'en' });
+      socket.emit('queue.join', { mode: queueMode, interests, lang: 'en' });
       socket.emit('heartbeat', {});
     });
     socket.on('connect_error', () => {
@@ -157,10 +181,18 @@ export function ConnectPage({
       if (payload.sessionId !== activeSessionId.current || !payload.mutualAccepted) return;
       setVideoConsentSubmitted(true);
       setVideoConsentAccepted(true);
+      setSecondsLeft(120);
       void api
         .getConnectVideoToken(accessToken, payload.sessionId)
         .then(() => setVideoReady(true))
         .catch(() => setError('Video setup is unavailable right now. You can leave this chat.'));
+    });
+    socket.on('video.limit_reached', (payload: { sessionId?: string; limitSeconds?: number }) => {
+      if (payload.sessionId && payload.sessionId !== activeSessionId.current) return;
+      setSecondsLeft(0);
+      setLocalStream(null);
+      setTimeLimitOpen(true);
+      setNotice('Time limit reached. This call has ended.');
     });
     socket.on('chat.message', (payload: { id: string; from: string; body: string }) => {
       setMessages((current) => [
@@ -170,9 +202,7 @@ export function ConnectPage({
     });
     socket.on('chat.ack', (payload: { clientMsgId: string }) => {
       setMessages((current) =>
-        current.map((message) =>
-          message.id === payload.clientMsgId ? { ...message, status: 'sent' } : message,
-        ),
+        current.map((m) => (m.id === payload.clientMsgId ? { ...m, status: 'sent' } : m)),
       );
     });
     socket.on(
@@ -208,13 +238,9 @@ export function ConnectPage({
           : 'That message was held for a safety review. Keep the chat respectful and non-explicit.';
       setNotice(warning);
       setMessages((current) => {
-        const last = [...current]
-          .reverse()
-          .find((message) => message.mine && message.status === 'sending');
+        const last = [...current].reverse().find((m) => m.mine && m.status === 'sending');
         return last
-          ? current.map((message) =>
-              message.id === last.id ? { ...message, status: 'failed' } : message,
-            )
+          ? current.map((m) => (m.id === last.id ? { ...m, status: 'failed' } : m))
           : current;
       });
     });
@@ -231,11 +257,23 @@ export function ConnectPage({
     socket.connect();
   }
 
+  function startFromRules() {
+    sessionStorage.setItem('posha:connect-safety-seen', 'true');
+    setPreChatOpen(false);
+    startQueue(mode);
+  }
+
   useEffect(() => {
     if (!socketRef.current || state === 'idle') return;
     const timer = window.setInterval(() => socketRef.current?.emit('heartbeat', {}), 5_000);
     return () => window.clearInterval(timer);
   }, [state]);
+
+  useEffect(() => {
+    if (mode !== 'video' || !videoConsentAccepted || !videoReady || !sessionId) return;
+    const timer = window.setInterval(() => setSecondsLeft((c) => Math.max(0, c - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [mode, videoConsentAccepted, videoReady, sessionId]);
 
   function leaveQueue() {
     const socket = socketRef.current;
@@ -310,7 +348,7 @@ export function ConnectPage({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       if (activeSessionId.current !== sessionId) {
-        stream.getTracks().forEach((track) => track.stop());
+        stream.getTracks().forEach((t) => t.stop());
         return;
       }
       setLocalStream(stream);
@@ -324,56 +362,92 @@ export function ConnectPage({
   }
 
   return (
-    <section className="connect-page" aria-labelledby="connect-title">
-      <p className="eyebrow">POSHA Connect{videoEnabled ? '' : ' · text only'}</p>
-      <h1 id="connect-title">Connect with a verified adult</h1>
+    <section className={`connect-page connect-page--${mode}`} aria-labelledby="connect-title">
+      <header className="connect-page__intro">
+        <Link to="/home" className="connect-back" aria-label="Back to home">
+          <ChevronLeft width={20} />
+        </Link>
+        <div>
+          <p className="eyebrow">POSHA CONNECT · ADULTS ONLY</p>
+          <h1 id="connect-title">
+            {mode === 'video' ? 'Video chat with strangers' : 'Chat with strangers'}
+          </h1>
+        </div>
+      </header>
+
       {state === 'idle' ? (
-        <div className="feature-card">
+        <div className="connect-start-card">
+          <span className="connect-start-card__icon" aria-hidden="true">
+            {mode === 'video' ? <Video width={26} /> : <ChatFallback />}
+          </span>
+          <h2>{mode === 'video' ? 'Face to face' : 'Text, instantly'}</h2>
           <p>
-            Start a private, non-explicit text conversation. You can leave, report, or block at any
-            time.
+            {mode === 'video'
+              ? 'Meet someone new on a short video call.'
+              : 'Start a private, non-explicit conversation with another adult.'}
           </p>
           <p className="fine-print">
-            Keep contact details private. Respect boundaries. No explicit content.
+            Report and block are always one tap away. Keep personal contact details private.
           </p>
-          <Button onClick={() => startQueue('text')}>Start text chat</Button>
+          <Button
+            icon={mode === 'video' ? <Video width={16} /> : undefined}
+            onClick={() => (preChatOpen ? setPreChatOpen(true) : startQueue(mode))}
+          >
+            {mode === 'video' ? 'Start video chat' : 'Start chatting'}
+          </Button>
           {videoEnabled ? (
-            <Button variant="secondary" onClick={() => startQueue('video')}>
-              Find video chat
+            <Button
+              variant="secondary"
+              onClick={() => setMode(mode === 'video' ? 'text' : 'video')}
+            >
+              {mode === 'video' ? 'Switch to text chat' : 'Switch to video chat'}
             </Button>
           ) : null}
         </div>
       ) : null}
+
       {state === 'connecting' ? (
-        <div className="connect-status" role="status">
-          <p>Connecting securely…</p>
+        <div className="connect-status connect-searching" role="status" aria-live="polite">
+          <span className="connect-radar" aria-hidden="true">
+            {mode === 'video' ? <Video width={44} /> : <ChatFallback size={44} />}
+          </span>
+          <h2>
+            {mode === 'video' ? 'Finding someone for a video chat…' : 'Finding someone for you…'}
+          </h2>
           <Button variant="secondary" onClick={leaveQueue}>
             Cancel
           </Button>
         </div>
       ) : null}
+
       {state === 'queued' ? (
-        <div className="connect-status" role="status">
+        <div className="connect-status connect-searching" role="status">
           <p>
             {position && position > 0
               ? `You’re in the queue (position ${position}).`
               : 'Finding a conversation…'}
           </p>
-          <p className="fine-print">Your identity stays private until you choose what to share.</p>
+          <p className="fine-print">Your identity stays private. Keep it kind and non-explicit.</p>
           <Button onClick={leaveQueue} variant="secondary">
             Leave queue
           </Button>
         </div>
       ) : null}
+
       {state === 'matched' ? (
         <div
           className="connect-session"
           aria-label={mode === 'video' ? 'Video conversation' : 'Text conversation'}
         >
           <header className="connect-session__header">
+            <span className="connect-avatar" aria-hidden="true">
+              {partner.slice(0, 1).toUpperCase()}
+            </span>
             <div>
               <h2>{partner}</h2>
-              <p>Verified adult · {mode === 'video' ? 'video chat' : 'text chat'}</p>
+              <p>
+                <span className="connect-status-dot" aria-hidden="true" /> Connected
+              </p>
             </div>
             <div className="connect-session__actions">
               <Button
@@ -383,6 +457,7 @@ export function ConnectPage({
                   setSafetyAction('report');
                 }}
                 variant="secondary"
+                icon={<Shield width={14} />}
               >
                 Report
               </Button>
@@ -393,11 +468,14 @@ export function ConnectPage({
                   setSafetyAction('block');
                 }}
                 variant="danger"
+                icon={<X width={14} />}
               >
                 Block
               </Button>
             </div>
           </header>
+          <p className="connect-system-pill">You’re matched. Keep it kind and non-explicit.</p>
+
           {mode === 'video' && !videoConsentAccepted && !videoConsentSubmitted ? (
             <div className="feature-card" aria-label="Video consent">
               <p>
@@ -406,7 +484,11 @@ export function ConnectPage({
                 automated safety checks and are not saved. You can decline or leave at any time.
                 Keep the conversation non-explicit and report anything that makes you uncomfortable.
               </p>
-              <Button disabled={leavingSession.current} onClick={() => submitVideoConsent(true)}>
+              <Button
+                disabled={leavingSession.current}
+                onClick={() => submitVideoConsent(true)}
+                icon={<Video width={16} />}
+              >
                 Accept video
               </Button>
               <Button variant="secondary" onClick={() => submitVideoConsent(false)}>
@@ -414,20 +496,70 @@ export function ConnectPage({
               </Button>
             </div>
           ) : null}
+
           {mode === 'video' && videoConsentSubmitted && !videoConsentAccepted ? (
             <div className="connect-status" role="status">
               <p>Waiting for both people to agree before video can start…</p>
             </div>
           ) : null}
+
           {mode === 'video' && videoConsentAccepted ? (
-            <div className="connect-status" role="status">
+            <div className="connect-video-call" role="region" aria-label="Video call">
+              <div
+                className="connect-video-call__remote"
+                aria-label="Remote video privacy placeholder"
+              >
+                <span aria-hidden="true">{partner.slice(0, 1).toUpperCase()}</span>
+                <p>Video is not connected in this build</p>
+              </div>
+              <div className="connect-video-call__timer" role="timer" aria-live="off">
+                <strong>
+                  {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')} left
+                </strong>
+                <span>Guests get 2 min</span>
+              </div>
+              {secondsLeft === 15 ? (
+                <span className="sr-only" role="status">
+                  15 seconds left
+                </span>
+              ) : null}
+              <p className="connect-video-call__upgrade">Subscribe to a creator to chat longer</p>
+              <div className="connect-video-call__controls" aria-label="Call controls">
+                <Button
+                  variant="secondary"
+                  onClick={() => setMuted((v) => !v)}
+                  aria-pressed={muted}
+                >
+                  {muted ? 'Unmute' : 'Mute'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setCameraOff((v) => !v)}
+                  aria-pressed={cameraOff}
+                >
+                  {cameraOff ? 'Camera on' : 'Camera'}
+                </Button>
+                <Button variant="secondary" onClick={nextSession}>
+                  Next
+                </Button>
+                <Button variant="danger" onClick={() => setSafetyAction('report')}>
+                  Report
+                </Button>
+                <Button variant="danger" onClick={leaveSession}>
+                  Leave
+                </Button>
+              </div>
               <p>
                 {videoReady
                   ? 'Both people agreed. Your camera and microphone remain off until you allow access.'
                   : 'Both people agreed. Preparing secure video room access…'}
               </p>
               {videoReady && !localStream ? (
-                <Button onClick={() => void enableCamera()} disabled={leavingSession.current}>
+                <Button
+                  onClick={() => void enableCamera()}
+                  disabled={leavingSession.current}
+                  icon={<Camera width={16} />}
+                >
                   Enable camera and microphone
                 </Button>
               ) : null}
@@ -450,6 +582,7 @@ export function ConnectPage({
               ) : null}
             </div>
           ) : null}
+
           {mode === 'text' ? (
             <ol className="connect-messages" aria-label="Messages" aria-live="polite">
               {messages.length === 0 ? (
@@ -474,32 +607,44 @@ export function ConnectPage({
               ))}
             </ol>
           ) : null}
+
           {mode === 'text' ? (
             <form className="connect-composer" onSubmit={sendMessage}>
               <TextArea
                 aria-label="Your message"
                 label="Message"
                 maxLength={1000}
-                onChange={(event) => setDraft(event.currentTarget.value)}
+                onChange={(e) => setDraft(e.currentTarget.value)}
                 value={draft}
               />
-              <Button type="submit" disabled={!draft.trim() || leavingSession.current}>
+              <Button
+                type="submit"
+                disabled={!draft.trim() || leavingSession.current}
+                icon={<Send width={16} />}
+              >
                 Send
               </Button>
             </form>
           ) : null}
+
           <div className="connect-session__footer">
             {mode === 'text' ? (
               <Button disabled={leavingSession.current} onClick={nextSession} variant="secondary">
-                Next person
+                Next stranger
               </Button>
             ) : null}
-            <Button disabled={leavingSession.current} onClick={leaveSession} variant="danger">
+            <Button
+              disabled={leavingSession.current}
+              onClick={leaveSession}
+              variant="danger"
+              icon={<X width={14} />}
+            >
               Leave chat
             </Button>
           </div>
         </div>
       ) : null}
+
       {notice ? (
         <p className="connect-notice" role="status">
           {notice}
@@ -510,6 +655,90 @@ export function ConnectPage({
           {error}
         </p>
       ) : null}
+
+      {preChatOpen && state === 'idle' ? (
+        <div className="connect-sheet-backdrop">
+          <section
+            className="connect-rules-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="connect-rules-title"
+          >
+            <span className="connect-sheet-handle" aria-hidden="true" />
+            <p className="eyebrow">BE KIND</p>
+            <h2 id="connect-rules-title">Be kind. Keep it non-explicit.</h2>
+            <ul>
+              <li>Respect boundaries and end the chat whenever you want.</li>
+              <li>Never share private contact or financial details.</li>
+              <li>Sexual content, harassment and threats are not allowed.</li>
+            </ul>
+            <p className="connect-rules-note">
+              <Shield width={14} /> Report and block are always one tap away.
+            </p>
+            <fieldset className="interest-picker">
+              <legend>Optional interests</legend>
+              {['Music', 'Travel', 'Food', 'Books'].map((interest) => (
+                <Chip
+                  key={interest}
+                  type="button"
+                  selected={interests.includes(interest)}
+                  onClick={() =>
+                    setInterests((c) =>
+                      c.includes(interest) ? c.filter((x) => x !== interest) : [...c, interest],
+                    )
+                  }
+                >
+                  {interest}
+                </Chip>
+              ))}
+            </fieldset>
+            <Button onClick={startFromRules}>
+              {mode === 'video' ? 'Find a video chat' : 'Start chatting'}
+            </Button>
+            <button
+              className="connect-rules-cancel"
+              type="button"
+              onClick={() => setPreChatOpen(false)}
+            >
+              Not now
+            </button>
+          </section>
+        </div>
+      ) : null}
+
+      {timeLimitOpen ? (
+        <div className="subscribe-backdrop">
+          <section
+            className="time-limit-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="time-limit-title"
+          >
+            <span className="connect-sheet-handle" aria-hidden="true" />
+            <span className="time-limit-heart" aria-hidden="true">
+              <Heart width={28} fill="currentColor" />
+            </span>
+            <h2 id="time-limit-title">Your 2 minutes are up</h2>
+            <p>Subscribe to any creator to keep video chatting for longer.</p>
+            <ul>
+              <li>
+                <Check width={14} /> Video chats up to 30 minutes
+              </li>
+              <li>
+                <Check width={14} /> Unlock that creator’s videos
+              </li>
+              <li>
+                <Check width={14} /> Cancel any time
+              </li>
+            </ul>
+            <Button onClick={() => navigate('/profile')}>Subscribe from KSh 300</Button>
+            <Button variant="secondary" onClick={() => navigate('/home')}>
+              Back to home
+            </Button>
+          </section>
+        </div>
+      ) : null}
+
       {safetyAction && sessionId ? (
         <ConnectSafetySheet
           action={safetyAction}
@@ -528,5 +757,24 @@ export function ConnectPage({
         />
       ) : null}
     </section>
+  );
+}
+
+/* Chat icon fallback (Chat is intentionally excluded from the top imports to avoid clash) */
+function ChatFallback({ size = 26 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.2-3.3A7.5 7.5 0 1 1 20 11.5Z" />
+    </svg>
   );
 }

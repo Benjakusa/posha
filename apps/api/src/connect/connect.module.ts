@@ -55,6 +55,8 @@ import { LiveKitSfuProvider, SFU_PROVIDER } from './connect-sfu.provider.js';
 import type { SfuProvider } from './connect-sfu.provider.js';
 import { CONNECT_CHAT_ABUSE_STORE } from './connect-chat-abuse.store.js';
 import type { ConnectChatAbuseStore } from './connect-chat-abuse.store.js';
+import { GUEST_SESSION_VERIFIER } from '../guest/guest-session.service.js';
+import type { GuestSessionVerifier } from '../guest/guest-session.service.js';
 import {
   CONNECT_VIDEO_FRAME_CLASSIFIER,
   CONNECT_VIDEO_MODERATION_SERVICE,
@@ -90,6 +92,7 @@ export interface ConnectModuleOptions {
   videoConsentVerifier?: VideoConsentVerifier;
   videoFrameClassifier?: ConnectVideoFrameClassifier;
   videoModerationStore?: ConnectVideoModerationStore;
+  guestSessionVerifier?: GuestSessionVerifier;
 }
 
 @Module({})
@@ -122,6 +125,13 @@ export class ConnectModule {
         { provide: CONNECT_MESSAGE_CIPHER, useValue: options.messageCipher },
         { provide: CONNECT_MODERATION_PROVIDER, useValue: options.moderationProvider },
         { provide: CONNECT_CHAT_ABUSE_STORE, useValue: options.chatAbuseStore },
+        {
+          provide: GUEST_SESSION_VERIFIER,
+          useValue: options.guestSessionVerifier ?? {
+            isActive: async () => false,
+            aliasFor: async () => null,
+          },
+        },
         {
           provide: CONNECT_VIDEO_FRAME_CLASSIFIER,
           useValue: options.videoFrameClassifier ?? new UnavailableConnectVideoFrameClassifier(),
@@ -260,6 +270,7 @@ export class ConnectModule {
               messages,
               metrics,
               () => options.featureFlags.isEnabled('GATE:RANDOM_VIDEO'),
+              options.guestSessionVerifier,
             ),
           inject: [
             MATCHING_STORE,

@@ -98,19 +98,22 @@ describe('Ember core primitives', () => {
     expect(screen.getByRole('heading', { name: 'No rooms' })).toBeTruthy();
   });
 
-  it('[P1-06] passes axe accessibility checks for representative controls and states', async () => {
-    const { container } = render(
-      <main>
-        <Button>Continue</Button>
-        <Input label="Email" type="email" />
-        <Checkbox label="Accept safety rules" />
-        <Switch label="Show online status" />
-        <Badge variant="verified">Verified</Badge>
-        <Avatar name="Test Creator" />
-        <ErrorState title="Unable to continue">Try again.</ErrorState>
-      </main>,
-    );
-    const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
-    expect(results.violations).toEqual([]);
+  it('[B-S2-04] passes axe accessibility checks in both themes', async () => {
+    for (const theme of ['dark', 'light']) {
+      const { container, unmount } = render(
+        <main className="theme-surface" data-theme={theme}>
+          <Button>Continue</Button>
+          <Input label="Email" type="email" />
+          <Checkbox label="Accept safety rules" />
+          <Switch label="Show online status" />
+          <Badge variant="verified">Verified</Badge>
+          <Avatar name="Test Creator" />
+          <ErrorState title="Unable to continue">Try again.</ErrorState>
+        </main>,
+      );
+      const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
+      expect(results.violations, theme).toEqual([]);
+      unmount();
+    }
   });
 });

@@ -12,7 +12,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ErrorCodes } from '@posha/shared';
 import type { AgeLevel } from '@posha/shared';
-import type { AuthAccessClaims, AuthService } from '../auth/auth.service.js';
+import { AuthService } from '../auth/auth.service.js';
+import type { AuthAccessClaims } from '../auth/auth.service.js';
 import { FeatureFlagsService } from '../flags/feature-flags.service.js';
 import type { AuthStore } from '../auth/auth-store.js';
 import { AUTH_STORE } from '../auth/auth-store.js';
@@ -37,7 +38,7 @@ export interface PolicyUserContext {
   totpEnabled: boolean;
 }
 
-interface GuardRequest {
+export interface GuardRequest {
   headers?: Record<string, string | string[] | undefined>;
   body?: Record<string, unknown>;
   params?: Record<string, string | undefined>;
@@ -102,7 +103,7 @@ export class AccountStatusGuard implements CanActivate {
 
 @Injectable()
 export class AgeLevelGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     const required = this.reflector.getAllAndOverride(RequiredAge, [
@@ -122,7 +123,7 @@ export class AgeLevelGuard implements CanActivate {
 
 @Injectable()
 export class RoleGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     const required = this.reflector.getAllAndOverride(RequiredRoles, [
@@ -155,7 +156,7 @@ export class RoleGuard implements CanActivate {
 @Injectable()
 export class OwnershipPolicyGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(OWNERSHIP_RESOLVER) private readonly resolver: OwnershipResolver,
   ) {}
 
@@ -177,7 +178,7 @@ export class OwnershipPolicyGuard implements CanActivate {
 @Injectable()
 export class FeatureGateGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    @Inject(Reflector) private readonly reflector: Reflector,
     private readonly featureFlags: FeatureFlagsService,
   ) {}
 
@@ -195,7 +196,7 @@ export class FeatureGateGuard implements CanActivate {
 @Injectable()
 export class RateLimitGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(RATE_LIMIT_STORE) private readonly rateLimitStore: RateLimitStore,
   ) {}
 

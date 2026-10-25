@@ -26,6 +26,174 @@
         "summary": "Liveness probe",
         "tags": ["system"]
       }
+    },
+    "/api/v1/auth/otp/request": {
+      "post": {
+        "operationId": "AuthController_request",
+        "parameters": [],
+        "responses": { "202": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/otp/verify": {
+      "post": {
+        "operationId": "AuthController_verify",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/guest/session": {
+      "post": {
+        "operationId": "GuestSessionController_create",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["GuestSession"]
+      }
+    },
+    "/api/v1/catalog/home": {
+      "get": {
+        "operationId": "CatalogController_home",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/media/{id}/black-placeholder": {
+      "get": {
+        "operationId": "CatalogController_blackPlaceholder",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/age/start": {
+      "post": {
+        "operationId": "AgeController_start",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Age"]
+      }
+    },
+    "/api/v1/age/status": {
+      "get": {
+        "operationId": "AgeController_status",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Age"]
+      }
+    },
+    "/api/v1/age/webhook": {
+      "post": {
+        "operationId": "AgeController_webhook",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Age"]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "UsersController_me",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      },
+      "patch": {
+        "operationId": "UsersController_updateProfile",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      },
+      "delete": {
+        "operationId": "UsersController_requestDeletion",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      }
+    },
+    "/api/v1/me/preferences": {
+      "patch": {
+        "operationId": "UsersController_updatePreferences",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      }
+    },
+    "/api/v1/me/data-export": {
+      "post": {
+        "operationId": "UsersController_requestExport",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Users"]
+      }
+    },
+    "/api/v1/blocks": {
+      "get": {
+        "operationId": "UsersController_listBlocks",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      },
+      "post": {
+        "operationId": "UsersController_block",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Users"]
+      }
+    },
+    "/api/v1/blocks/{userId}": {
+      "delete": {
+        "operationId": "UsersController_unblock",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      }
+    },
+    "/api/v1/me/notification-preferences": {
+      "get": {
+        "operationId": "NotificationsController_get",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Notifications"]
+      },
+      "patch": {
+        "operationId": "NotificationsController_update",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Notifications"]
+      }
+    },
+    "/api/v1/reports": {
+      "post": {
+        "operationId": "ConnectSafetyController_report",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["ConnectSafety"]
+      }
+    },
+    "/api/v1/connect/sessions/{sessionId}/block": {
+      "post": {
+        "operationId": "ConnectSafetyController_blockSession",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["ConnectSafety"]
+      }
+    },
+    "/api/v1/metrics": {
+      "get": {
+        "operationId": "ConnectMetricsController_render",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["ConnectMetrics"]
+      }
+    },
+    "/api/v1/connect/sessions/{sessionId}/video-token": {
+      "post": {
+        "operationId": "ConnectVideoTokenController_issue",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["ConnectVideoToken"]
+      }
     }
   },
   "info": {

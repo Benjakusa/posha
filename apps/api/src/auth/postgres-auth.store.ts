@@ -24,6 +24,7 @@ interface SessionRow {
   revoked_at: Date | null;
   mfa_verified_at: Date | null;
   roles: string[];
+  created_at: Date;
 }
 
 function toAuthSession(row: SessionRow): AuthSession {
@@ -37,6 +38,7 @@ function toAuthSession(row: SessionRow): AuthSession {
     familyExpiresAt: row.family_expires_at,
     revokedAt: row.revoked_at,
     mfaVerifiedAt: row.mfa_verified_at,
+    createdAt: row.created_at,
   };
 }
 

@@ -47,6 +47,8 @@ import {
   CONNECT_VIDEO_MODERATION_SERVICE,
   ConnectVideoModerationService,
 } from './connect-video-moderation.service.js';
+import { GUEST_SESSION_VERIFIER } from '../guest/guest-session.service.js';
+import type { GuestSessionVerifier } from '../guest/guest-session.service.js';
 
 interface SocketPrincipal {
   userId: string;
@@ -110,9 +112,9 @@ const ALLOWED_ERROR_CODES = new Set<string>([
 export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly localChatAbuse = new MemoryConnectChatAbuseStore();
   constructor(
-    private readonly authService: AuthService,
+    @Inject(AuthService) private readonly authService: AuthService,
     @Inject(AUTH_STORE) private readonly authStore: AuthStore,
-    private readonly featureFlags: FeatureFlagsService,
+    @Inject(FeatureFlagsService) private readonly featureFlags: FeatureFlagsService,
     @Inject(RATE_LIMIT_STORE) private readonly rateLimits: RateLimitStore,
     @Inject(CONNECT_PRESENCE_STORE) private readonly presence: ConnectPresenceStore,
     @Inject(CONNECT_REALTIME_PORT) private readonly connect: ConnectRealtimePort,
@@ -126,6 +128,9 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     @Optional()
     @Inject(CONNECT_VIDEO_MODERATION_SERVICE)
     private readonly videoModeration?: ConnectVideoModerationService,
+    @Optional()
+    @Inject(GUEST_SESSION_VERIFIER)
+    private readonly guestSessions?: GuestSessionVerifier,
   ) {}
 
   afterInit(server: Namespace): void {
@@ -424,6 +429,15 @@ export class ConnectGateway implements OnGatewayInit, OnGatewayConnection, OnGat
       claims = await this.authService.verifyAccessToken(token);
     } catch {
       throw new ConnectRealtimeError(ErrorCodes.UNAUTHORIZED);
+    }
+    if (claims.roles.includes('guest')) {
+      if (
+        !this.featureFlags.isEnabled('GATE:GUEST_ACCESS') ||
+        !(await this.guestSessions?.isActive(claims.sub))
+      ) {
+        throw new ConnectRealtimeError(ErrorCodes.UNAUTHORIZED);
+      }
+      return { userId: claims.sub, accessToken: token, claims };
     }
     const state = await this.authStore.getUserAuthState(claims.sub);
     if (!state || state.accountStatus !== 'active')

@@ -1,6 +1,7 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PoshaApiClient } from '../api/client.js';
 import type { ConnectClientSocket } from './realtime.js';
@@ -44,6 +45,7 @@ const api = {
 } as unknown as PoshaApiClient;
 afterEach(() => {
   cleanup();
+  sessionStorage.clear();
   vi.clearAllMocks();
 });
 
@@ -60,14 +62,17 @@ describe('Connect chat flow (P2-06)', () => {
       }),
     } as unknown as PoshaApiClient;
     render(
-      <ConnectPage
-        accessToken="access-token"
-        api={videoApi}
-        videoEnabled
-        socketFactory={() => socket as unknown as ConnectClientSocket}
-      />,
+      <MemoryRouter>
+        <ConnectPage
+          accessToken="access-token"
+          api={videoApi}
+          videoEnabled
+          initialMode="video"
+          socketFactory={() => socket as unknown as ConnectClientSocket}
+        />
+      </MemoryRouter>,
     );
-    await user.click(screen.getByRole('button', { name: 'Find video chat' }));
+    await user.click(screen.getByRole('button', { name: 'Find a video chat' }));
     expect(socket.emissions).toContainEqual({
       event: 'queue.join',
       payload: { mode: 'video', interests: [], lang: 'en' },
@@ -95,19 +100,27 @@ describe('Connect chat flow (P2-06)', () => {
       await screen.findByRole('button', { name: 'Enable camera and microphone' }),
     ).toBeTruthy();
     expect(videoApi.getConnectVideoToken).toHaveBeenCalledWith('access-token', 'video-session');
+    act(() =>
+      socket.fire('video.limit_reached', { sessionId: 'video-session', limitSeconds: 120 }),
+    );
+    expect(await screen.findByRole('dialog', { name: 'Your 2 minutes are up' })).toBeTruthy();
   });
 
   it('joins the text queue, relays chat, handles Next and ignores stale session end events', async () => {
     const socket = new FakeSocket();
     const user = userEvent.setup();
     const { container } = render(
-      <ConnectPage
-        accessToken="access-token"
-        api={api}
-        socketFactory={() => socket as unknown as ConnectClientSocket}
-      />,
+      <MemoryRouter>
+        <ConnectPage
+          accessToken="access-token"
+          api={api}
+          socketFactory={() => socket as unknown as ConnectClientSocket}
+        />
+      </MemoryRouter>,
     );
-    await user.click(screen.getByRole('button', { name: 'Start text chat' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Start chatting' }),
+    );
     expect(socket.emissions).toContainEqual({
       event: 'queue.join',
       payload: { mode: 'text', interests: [], lang: 'en' },
@@ -136,7 +149,7 @@ describe('Connect chat flow (P2-06)', () => {
       socket.fire('chat.message', { id: 'incoming-1', from: 'RiverStone', body: 'Good morning' }),
     );
     expect(await screen.findByText('Good morning')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Next person' }));
+    await user.click(screen.getByRole('button', { name: 'Next stranger' }));
     expect(socket.emissions.at(-1)).toEqual({
       event: 'session.next',
       payload: { sessionId: 'session-1' },
@@ -157,17 +170,21 @@ describe('Connect chat flow (P2-06)', () => {
     const socket = new FakeSocket();
     const user = userEvent.setup();
     render(
-      <ConnectPage
-        accessToken="access-token"
-        api={api}
-        socketFactory={() => socket as unknown as ConnectClientSocket}
-      />,
+      <MemoryRouter>
+        <ConnectPage
+          accessToken="access-token"
+          api={api}
+          socketFactory={() => socket as unknown as ConnectClientSocket}
+        />
+      </MemoryRouter>,
     );
-    await user.click(screen.getByRole('button', { name: 'Start text chat' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Start chatting' }),
+    );
     await user.click(screen.getByRole('button', { name: 'Leave queue' }));
     expect(socket.emissions).toContainEqual({ event: 'queue.leave', payload: {} });
     act(() => socket.fire('queue.left', {}));
-    await user.click(screen.getByRole('button', { name: 'Start text chat' }));
+    await user.click(screen.getByRole('button', { name: 'Start chatting' }));
     act(() => socket.fire('connect_error'));
     expect((await screen.findByRole('alert')).textContent).toContain('Chat could not connect');
   });

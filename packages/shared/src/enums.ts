@@ -5,6 +5,7 @@ export const AccountStatuses = ['active', 'suspended', 'banned', 'deleted'] as c
 export type AccountStatus = (typeof AccountStatuses)[number];
 
 export const Roles = [
+  'guest',
   'member',
   'subscriber',
   'creator',

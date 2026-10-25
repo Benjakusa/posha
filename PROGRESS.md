@@ -1,8 +1,8 @@
 # POSHA PROGRESS (single source of truth for "where are we")
-Last updated: 2026-10-21 by Codex
-Current phase: Phase 3
-Current task: P3-04
-Next task: P3-04
+Last updated: 2026-10-23 by Codex
+Current phase: Track B — screen build continuation (Screens 4–7)
+Current task: POSHA screen prompts, Screens 4–7
+Next task: backend integration for video limits, verified payments, and creator review
 
 ## Track B — Simple App Build Prompt (stages S0–S10)
 
@@ -11,10 +11,10 @@ Next task: P3-04
 | Stage | Task | Commit | Tests | Notes |
 |---|---|---|---|---|
 | S0 — Orientation & baseline | B-S0-01..04 | ff1d50a | gates green | No code changes except docs. Done. |
-| S1 — Backend actually runs | B-S1-01..05 | pending | Supertest boot | API serves real routes without Docker; web can call. |
-| S2 — Design foundation | B-S2-01..05 | pending | component+axe | Love-app theme, light/dark, motion kit. |
-| S3 — Guest age gate | B-S3-01..05 | pending | guest API + guards | Guest session + entry flow; no OTP. |
-| S4 — Home page (animated) | B-S4-01..07 | pending | catalogue API+axe | Animated home; STOP for visual review. |
+| S1 — Backend actually runs | B-S1-01..05 | Done | API boot | Auth, age, profile, notifications, and Connect modules are mounted; local in-memory startup works without Docker. |
+| S2 — Design foundation | B-S2-01..05 | Done | contrast, UI/web tests, Storybook build | Red/black/white token system, persisted theme, motion and icon primitives. |
+| S3 — Guest age gate | B-S3-01..05 | Done | API/web/gateway tests | Guest session + age declaration gate; no OTP. |
+| S4 — Home page (animated) | B-S4-01..07 | Done | API/web/axe/build | Catalogue-backed home in both themes; STOP at the required visual review checkpoint. Lighthouse LCP was not measured. |
 | S5 — Text chat (guest-ready) | B-S5-01..04 | pending | guest chat journey | Two browsers as guests chat. |
 | S6 — Video + 2-min limit | B-S6-01..06 | pending | timer+signalling | WebRTC, server-enforced 2-min limit. |
 | S7 — Subscriptions, payments | B-S7-01..07 | pending | property+idempotency | Payments, entitlements, followers. |
@@ -22,7 +22,7 @@ Next task: P3-04
 | S9 — Uploads, locked, lives | B-S9-01..06 | pending | locked-content tests | Uploads, locked playback, planned lives. |
 | S10 — Polish, QA, handover | B-S10-01..07 | pending | all gates + e2e | Security, performance, docs, handover. |
 
-**Current stage: S1**
+**Current stage: Screens 4–7 UI implemented; video, payments, and creator approval remain backend-gated.**
 
 
 ## Phase status
@@ -69,6 +69,11 @@ Next task: P3-04
 | P3-02 | Done | 2026-10-21 | `78dc703` | API consent/token tests (6); web Connect flow tests (3); workspace lint and typecheck pass; Prettier and `git diff --check` pass. | Added durable per-participant consent in the session store, gate-checked Socket.IO consent events, video-mode matchmaking, and token issuance only after mutual acceptance. The gated UI leaves devices off until both accept, then requests browser camera/microphone permission and provides a local preview with stop controls. Live media transport is not connected in this client yet. `GATE:RANDOM_VIDEO` stays OFF. |
 | P3-03 | Done | 2026-10-21 | `00c6db3` | Video/classifier tests (10); migration contract tests (11); shared tests (12); web Connect flow tests (3); workspace lint/typecheck/build/format and spec-coverage pass. PostgreSQL migration not applied because `TEST_DATABASE_URL` is unset. | Added a 3-second low-resolution client frame sampler, strict size/rate limits, active-session/mutual-consent checks, injectable classifier, and a reversible account/session flag table containing verdict metadata only. High-confidence results end both sides; classifier/storage failures close the call. No frame bytes are persisted. A real classifier and video transport are not configured, so token issuance stays unavailable and `GATE:RANDOM_VIDEO` remains OFF. |
 | P3-04 | Blocked-External | 2026-10-21 | `PENDING` | Existing video UI has Report/Block/Leave actions; transport reconnect behavior is not implemented. | Reconnect requires an SFU browser client and reachable media transport. `livekit-client` is absent from the lockfile and package cache; its earlier install attempt failed with registry DNS `EAI_AGAIN`. P3-04 remains current until the dependency and a testable SFU environment are available. |
+| B-S1-01..05 | Done | 2026-10-23 | `PENDING` | API lint/typecheck pass; API tests: 108 passed, 9 PostgreSQL integration tests skipped without `TEST_DATABASE_URL`; Supertest boot check passed outside the sandbox. | Replaced broken runtime wiring, mounted auth/age/users/notifications/Connect modules, added OTP request/verify routes, selected memory stores for local startup and existing Postgres stores when `DATABASE_URL` is set, corrected memory auth and age stores, and added route boot coverage. Dev OTP logs to the terminal; production OTP provider remains owner-selected. |
+| B-S2-01..05 | Done | 2026-10-23 | `PENDING` | Workspace lint/typecheck/build passed; UI tests 7 passed; web tests 17 passed; contrast 8 pairs passed; Storybook production build passed. `format:check` still flags pre-existing `apps/api/src/policies/video-rate-limit.store.ts` and untracked `POSHA_SUMMARY.md`. | Replaced noncompliant palette with red/black/white tokens, added persisted system-aware theme with no-flash bootstrap, shared page/reveal/press motion components, reduced-motion preference support, core inline SVG icons, light/dark story theme, and accessibility/theme/motion tests. |
+| B-S3-01..05 | Done | 2026-10-23 | `PENDING` | API boot tests passed; Connect gateway 8/8; web typecheck passed and web tests 18/18. | Added age declaration gate, rate-limited guest session endpoint and signed guest access, guest-safe Connect authentication, route protection, and a keyboard/pointer accessible entry experience. |
+| B-S4-01..07 | Done | 2026-10-23 | `PENDING` | Workspace lint/typecheck/build passed; web tests 18/18; API catalog/boot/gateway/migration suites 29/29; OpenAPI regenerated; changed source passes Prettier. Lighthouse LCP was not measured. | Added seeded memory/Postgres catalogue stores and reversible migration, entitlement-filtered thumbnail responses with a server-generated black SVG placeholder, responsive guest/member home, live countdowns, locked video tiles, theme/header/bottom navigation, subscription stub, route transitions, and both-theme axe checks. Stopped here for required owner visual review. |
+| SCREEN-04..07 | UI done | 2026-10-23 | `PENDING` | Web typecheck, lint and production build pass; web tests 19/19, including chat/video-limit UI and guest creator profile checks; axe checks pass with jsdom color contrast rule disabled. | Added the pre-chat safety sheet, full text-chat states, video call and time-limit sheet triggered by `video.limit_reached`, M-Pesa pending/failure/dev-demo sheet, subscriptions page, and creator application/profile/studio preview. Video transport and server timer events, verified payment callbacks, persistent creator applications, and approval authorization still require backend integration. |
 
 ## Blocked-External
 | ID | Waiting on | Since |
@@ -92,7 +97,7 @@ Next task: P3-04
 6. OTP email/SMS delivery provider
 7. Staff SSO provider
 8. Email/SMS/push delivery providers
-9. Guest access implementation: owner requests chat and video for strangers. The root API currently mounts only health and feature flags; auth, age, and Connect modules are not wired into runtime. Implement OTP-free guest sessions with server-issued identity and L2 age assurance before text chat. A live age provider is not configured and `GATE:AGE_PROVIDER_LIVE` remains OFF; creator-only registration remains unfinished. Random video stays blocked while `GATE:RANDOM_VIDEO` is OFF and its prerequisites are unmet.
+9. Guest access is implemented as OTP-free, server-issued sessions after an 18+ self-declaration. This is not identity or age verification; a live age provider is not configured and `GATE:AGE_PROVIDER_LIVE` remains OFF. Random video stays blocked while `GATE:RANDOM_VIDEO` is OFF and its prerequisites are unmet.
 
 ## Gates status (all must read OFF in prod until approved)
 AGE_PROVIDER_LIVE: OFF · RANDOM_VIDEO: OFF · CREATOR_MONETISATION: OFF · LIVE: OFF · PAYMENTS_LIVE: OFF · PRIVATE_SESSIONS: OFF · TIPS: OFF · GEO_*: OFF

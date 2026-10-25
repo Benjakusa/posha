@@ -25,6 +25,55 @@ describe('POSHA API foundation', () => {
     await request(app.getHttpServer()).get('/api/v1/health').expect(200).expect({ status: 'ok' });
   });
 
+  it('[B-S1-05] boots auth, age, users, notifications, and Connect routes without a database', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/request')
+      .send({ identity: 'guest@example.test' })
+      .expect(202)
+      .expect({ status: 'accepted' });
+
+    await request(app.getHttpServer()).get('/api/v1/age/status').expect(401);
+    await request(app.getHttpServer()).get('/api/v1/me').expect(401);
+    await request(app.getHttpServer()).get('/api/v1/me/notification-preferences').expect(401);
+    await request(app.getHttpServer()).post('/api/v1/reports').send({}).expect(401);
+  });
+
+  it('[B-S3-01] creates a short-lived declared guest session and rejects missing declarations', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/guest/session')
+      .send({ ageDeclaration: true, locale: 'en' })
+      .expect(201);
+    expect(response.body).toMatchObject({
+      tokenType: 'Bearer',
+      alias: expect.stringMatching(/^[A-Z][a-z]+ [A-Z][a-z]+$/),
+    });
+    expect(response.body.accessToken).toEqual(expect.any(String));
+    expect(Date.parse(response.body.expiresAt)).toBeGreaterThan(Date.now());
+    await request(app.getHttpServer())
+      .post('/api/v1/guest/session')
+      .send({ ageDeclaration: false })
+      .expect(400);
+  });
+
+  it('[B-S4-01] returns seeded catalogue records without exposing locked media URLs', async () => {
+    const response = await request(app.getHttpServer()).get('/api/v1/catalog/home').expect(200);
+    expect(response.body.lives).toHaveLength(5);
+    expect(response.body.videos).toHaveLength(12);
+    for (const video of response.body.videos as {
+      locked: boolean;
+      thumbnailUrl?: string;
+      placeholderUrl: string;
+    }[]) {
+      expect(video.locked).toBe(true);
+      expect(video.thumbnailUrl).toBeUndefined();
+      expect(video.placeholderUrl).toMatch(/black-placeholder$/);
+    }
+    const placeholder = await request(app.getHttpServer())
+      .get(response.body.videos[0].placeholderUrl)
+      .expect(200);
+    expect(placeholder.body.toString()).toContain('fill="#000000"');
+  });
+
   it('[P0-06] maps framework errors to RFC 7807 without exposing exception text', () => {
     const result = toProblemDetails(new Error('member@example.test secret details'), 'trace-01');
     expect(result).toEqual({
